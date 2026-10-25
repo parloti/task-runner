@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "checkers": ["typescript"],
+  "concurrency": "50%",
+  "dryRunTimeoutMinutes": 20,
+  "ignorePatterns": [
+    "**/.angular/",
+    "**/.playwright-mcp/",
+    "**/.stryker-tmp/",
+    "**/.user-data/",
+    "**/coverage/",
+    "**/dist/",
+    "**/docs/api/",
+    "**/logs/",
+    "**/reports/",
+    "**/temp/",
+    "**/test-results/",
+    "**/tmp/"
+  ],
+  "ignoreStatic": true,
+  "incremental": true,
+  "reporters": ["progress", "clear-text", "json"],
+  "testRunner": "vitest",
+  "thresholds": { "break": 15, "high": 80, "low": 60 },
+  "tsconfigFile": "tsconfig.app.json"
+}

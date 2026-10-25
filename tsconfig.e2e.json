@@ -1,0 +1,12 @@
+{
+  "compilerOptions": { "rootDir": "." },
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "vitest.setup.ts",
+    "tests/e2e/**/*.e2e.ts",
+    "tests/**/*.d.ts",
+    "tests/support/**/*.ts"
+  ],
+  "exclude": ["tests/support/**/*.spec.ts", "tests/support/**/__tests__/"],
+  "references": [{ "path": "./tsconfig.app.json" }]
+}

@@ -1,0 +1,144 @@
+# =========================================================
+# Node.js + TypeScript + Angular + Vitest + Playwright
+# + Stryker Mutator .gitignore
+# =========================================================
+
+# ---------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------
+node_modules/
+jspm_packages/
+
+# ---------------------------------------------------------
+# Logs
+# ---------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+test-run*.txt
+validate-run*.txt
+lint-run*.txt
+eslint-run*.txt
+typecheck-run*.txt
+logs
+
+# ---------------------------------------------------------
+# Runtime data
+# ---------------------------------------------------------
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ---------------------------------------------------------
+# Environment files
+# ---------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------
+# Build outputs
+# ---------------------------------------------------------
+dist/
+build/
+out/
+tmp/
+temp/
+.cache/
+.cache-loader/
+.eslintcache
+coverage/
+.vscode-test/
+.stylelintcache
+
+# Angular build cache
+.angular/
+
+# TypeScript
+*.tsbuildinfo
+
+# ---------------------------------------------------------
+# IDE / Editor files
+# ---------------------------------------------------------
+.DS_Store
+.freebuff/
+.github/context-mode
+.idea/
+*.swo
+*.swp
+Thumbs.db
+
+# ---------------------------------------------------------
+# Angular
+# ---------------------------------------------------------
+
+# Angular generated files
+.angular/cache/
+.angular/cache-loader/
+
+# ---------------------------------------------------------
+# Vitest
+# ---------------------------------------------------------
+vitest-report/
+coverage-final.json
+
+# ---------------------------------------------------------
+# Playwright
+# ---------------------------------------------------------
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+playwright/.auth/
+
+# Screenshots / videos from failed tests
+test-results/**/*.png
+test-results/**/*.webm
+test-results/**/*.zip
+
+# ---------------------------------------------------------
+# Stryker Mutator
+# ---------------------------------------------------------
+.stryker-tmp/
+reports/
+stryker.log
+
+# ---------------------------------------------------------
+# Package manager files
+# ---------------------------------------------------------
+.pnpm-store/
+.npm/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ---------------------------------------------------------
+# Misc
+# ---------------------------------------------------------
+*.tgz
+*.bak
+*.tmp
+
+# ---------------------------------------------------------
+# OS generated files
+# ---------------------------------------------------------
+ehthumbs.db
+Desktop.ini
+
+# ---------------------------------------------------------
+# User data and runtime data
+# ---------------------------------------------------------
+.user-data/
+.runtime-data/
+
+# ---------------------------------------------------------
+# Custom patterns
+# ---------------------------------------------------------
+logs/
+artifacts/

@@ -1,0 +1,12 @@
+**/.angular/
+**/.playwright-mcp/
+**/.stryker-tmp/
+**/.user-data/
+**/coverage/
+**/dist/
+**/docs/api/
+**/logs/
+**/reports/
+**/temp/
+**/test-results/
+**/tmp/

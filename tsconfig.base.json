@@ -1,0 +1,59 @@
+{
+  // Editor Support
+  "compileOnSave": false,
+  "compilerOptions": {
+    // Type Checking
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": true,
+
+    // Modules
+    "module": "preserve",
+    "rootDir": "${configDir}/src",
+
+    // Emit
+    "noEmitOnError": true,
+    "outDir": "${configDir}/dist",
+
+    // JavaScript Support
+
+    // Editor Support
+    "isolatedModules": true,
+
+    // Interop Constraints
+    "verbatimModuleSyntax": true,
+
+    // Backwards Compatibility
+
+    // Language and Environment
+    "experimentalDecorators": true,
+    "target": "esnext",
+    "types": ["node"],
+
+    // Compiler Diagnostics
+
+    // Projects
+    "composite": true,
+
+    // Output Formatting
+    "noErrorTruncation": true,
+
+    // Completeness
+    "skipLibCheck": true
+
+    // Command Line
+
+    // Watch Options
+  },
+  "exclude": [
+    "${configDir}/dist",
+    "${configDir}/coverage",
+    "${configDir}/node_modules",
+    "${configDir}/temp"
+  ]
+}

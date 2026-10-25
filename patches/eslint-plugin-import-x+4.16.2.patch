@@ -1,0 +1,49 @@
+diff --git a/node_modules/eslint-plugin-import-x/lib/rules/no-internal-modules.js b/node_modules/eslint-plugin-import-x/lib/rules/no-internal-modules.js
+index cf36962..9ee2291 100644
+--- a/node_modules/eslint-plugin-import-x/lib/rules/no-internal-modules.js
++++ b/node_modules/eslint-plugin-import-x/lib/rules/no-internal-modules.js
+@@ -109,7 +109,44 @@ export default createRule({
+         const isReachViolation = options.forbid
+             ? isForbidViolation
+             : isAllowViolation;
++        function isVitestMockImportSource(source) {
++            const dynamicImport = source.parent;
++            if (!dynamicImport) {
++                return false;
++            }
++            const isImportExpression = dynamicImport.type === 'ImportExpression';
++            const isImportCall = dynamicImport.type === 'CallExpression' && dynamicImport.callee.type === 'Import';
++            if (!isImportExpression && !isImportCall) {
++                return false;
++            }
++            const mockCall = dynamicImport.parent;
++            if (!mockCall || mockCall.type !== 'CallExpression') {
++                return false;
++            }
++            if (mockCall.arguments[0] !== dynamicImport) {
++                return false;
++            }
++            const { callee } = mockCall;
++            if (callee.type !== 'MemberExpression') {
++                return false;
++            }
++            if (callee.object.type !== 'Identifier' || callee.object.name !== 'vi') {
++                return false;
++            }
++            const propertyName = callee.property.type === 'Identifier'
++                ? callee.property.name
++                : callee.property.type === 'Literal' && typeof callee.property.value === 'string'
++                    ? callee.property.value
++                    : undefined;
++            if (!propertyName) {
++                return false;
++            }
++            return propertyName.toLowerCase().includes('mock');
++        }
+         return moduleVisitor(source => {
++            if (isVitestMockImportSource(source)) {
++                return;
++            }
+             const importPath = source.value;
+             if (potentialViolationTypes.has(importType(importPath, context)) &&
+                 isReachViolation(importPath)) {

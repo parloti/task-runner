@@ -1,0 +1,186 @@
+name: 🏷️ Release PR from pre-release
+
+on:
+  push:
+    branches:
+      - pre-release
+
+# Supersede queued runs; only the latest pre-release push matters.
+concurrency:
+  group: release-pr
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: 🧮 Compute next release version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version-file: ".nvmrc"
+
+      - name: 📦 Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: 🧮 Compute next release version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node --input-type=module --eval "
+            import { appendFileSync, writeFileSync } from 'node:fs';
+
+            const [{ default: semanticRelease }, { default: emojiConfig }] = await Promise.all([
+              import('semantic-release'),
+              import('@codeperfect/commitlint-config-emoji'),
+            ]);
+
+            const result = await semanticRelease({
+              branches: ['pre-release'],
+              dryRun: true,
+              plugins: [
+                ['@semantic-release/commit-analyzer', emojiConfig.parserPreset],
+                ['@semantic-release/release-notes-generator', emojiConfig.parserPreset],
+              ],
+              tagFormat: 'v\${version}',
+            });
+
+            const outputsFile = process.env.GITHUB_OUTPUT;
+            const notesFile = process.env.RUNNER_TEMP + '/RELEASE_NOTES.md';
+
+            if (!result) {
+              appendFileSync(outputsFile, 'version=' + '\n');
+              writeFileSync(notesFile, '');
+              console.log('No release computed for the current pre-release commits.');
+              process.exit(0);
+            }
+
+            appendFileSync(outputsFile, 'version=' + result.nextRelease.version + '\n');
+            appendFileSync(outputsFile, 'tag=' + result.nextRelease.gitTag + '\n');
+            writeFileSync(notesFile, result.nextRelease.notes ?? '');
+            console.log('Computed next release: ' + result.nextRelease.gitTag);
+          "
+
+      - name: 📤 Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: release-notes
+          path: ${{ runner.temp }}/RELEASE_NOTES.md
+          retention-days: 1
+
+  release-pr:
+    name: 🔀 Open release PR to main
+    needs: version
+    if: ${{ needs.version.outputs.version != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
+
+      - name: 🔀 Create or update release PR to main
+        uses: actions/github-script@v7
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        with:
+          script: |
+            const { readFileSync } = require("node:fs");
+
+            const { owner, repo } = context.repo;
+            const head = "pre-release";
+            const base = "main";
+            const version = process.env.RELEASE_VERSION;
+            const versionLabel = "v" + version;
+            const notes = readFileSync("RELEASE_NOTES.md", "utf8");
+            const title = "🔖 chore(release): v" + version;
+            const body = [
+              "Automated release PR from `pre-release` to `main`.",
+              "",
+              "## Release notes",
+              "",
+              notes.trim() || "_No release notes were generated._",
+              "",
+              "---",
+              "",
+              "Version workflow: " + context.serverUrl + "/" + owner + "/" + repo + "/actions/runs/" + context.runId,
+              "",
+              "> Merging this PR lands the release on `main`, where the release pipeline publishes the package and cuts the tag.",
+            ].join("\n");
+
+            const existing = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              head: owner + ":" + head,
+              base,
+              state: "open",
+              per_page: 100,
+            });
+
+            let pullNumber;
+            if (existing.length > 0) {
+              const [pull] = existing;
+              pullNumber = pull.number;
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pull.number,
+                title,
+                body,
+                state: "open",
+              });
+              core.notice("Updated release PR #" + pull.number + " for v" + version + ".");
+            } else {
+              const created = await github.rest.pulls.create({
+                owner,
+                repo,
+                head,
+                base,
+                title,
+                body,
+              });
+              pullNumber = created.data.number;
+              core.notice("Opened release PR #" + pullNumber + " for v" + version + ".");
+            }
+
+            const ensureLabel = async (name, color) => {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch {
+                await github.rest.issues.createLabel({ owner, repo, name, color }).catch(() => {});
+              }
+            };
+
+            await ensureLabel("release", "1d76db");
+            await ensureLabel(versionLabel, "0e8a16");
+
+            await github.rest.issues
+              .addLabels({
+                issue_number: pullNumber,
+                labels: ["release", versionLabel],
+                owner,
+                repo,
+              })
+              .catch(() => {});

@@ -1,0 +1,193 @@
+# Task Runner
+
+A dependency-aware npm-script runner with a compiled CLI and reusable library.
+Requires Node.js 24 or newer. No Workspaces Manager or runtime TypeScript loader
+is required.
+Local development preparation installs a source CLI shim; packed consumers use
+the compiled executable without running that development-only setup.
+
+## Install
+
+Install the CLI and library as a development dependency:
+
+```bash
+npm install --save-dev @codeperfect/task-runner
+```
+
+The package provides the `task-runner` command, a TypeScript library, workspace
+presets, and a JSON schema.
+
+## Validation
+
+- `npm test` runs source-level unit tests.
+- `npm run build` produces the compiled distribution.
+- `npm run e2e` tests the compiled distribution and isolated consumers; build
+  first. Packaging tests skip lifecycle scripts so they inspect that build
+  without replacing it during the suite.
+- `npm run validate -- --concurrency 1` runs the complete workflow serially,
+  including build before E2E.
+
+## Configuration
+
+Put `task-runner.json` at the repository root:
+
+```json
+{
+  "version": 2,
+  "packages": {
+    ".": {
+      "compile": { "run": { "kind": "npm", "script": "compile" } },
+      "test": {
+        "dependsOn": ["compile"],
+        "run": { "kind": "npm", "script": "test" }
+      },
+      "docs": { "run": { "kind": "npm", "script": "docs", "optional": true } },
+      "check": { "dependsOn": ["test", "docs"] }
+    }
+  }
+}
+```
+
+Keep `compile` and `test` as ordinary npm scripts; add
+`"check": "task-runner run check"` to `package.json`. Task references are explicit,
+not inferred from shell text. Use `{ "kind": "shell", "command": "..." }` for an
+intentional platform-specific shell command. npm tasks accept an `args` array,
+forwarded after `npm run <script> --`, and preserve npm lifecycle hooks.
+
+```powershell
+npm run check
+npm run check -- --ci
+npm run check -- --concurrency 3
+npm run check -- --collapse false
+npm run check -- --collapse false --max-tasks 150
+npm run check -- --no-scroll --collapse false --max-tasks 1000
+```
+
+Package keys are relative paths using `/`, or `.` for the root. Each package
+maps local task names directly to definitions; there is no `tasks` wrapper or
+entrypoint mapping. A bare
+dependency such as `compile` refers to the same package. Use
+`packages/lib#build` for another package or `.#build` for the root.
+The `#` separator is reserved in package paths and task names.
+Commandless tasks provide groups and aliases; any task is directly invocable.
+Generated configuration omits empty dependency lists. Version 1 is not supported.
+Invoking from a workspace selects that package's task without accidentally
+selecting a root aggregate. Nested
+directories select their nearest containing configured package.
+`--config <path>` and `--package <relative-path>` override discovery/selection.
+The schema is exported as `@codeperfect/task-runner/schema.json`.
+
+## Library and presets
+
+```typescript
+import { runTasks } from "@codeperfect/task-runner";
+import { createWorkspacePreset } from "@codeperfect/task-runner/presets";
+
+const result = await runTasks("check", {
+  cwd: "/path/to/repository",
+  signal: abortController.signal,
+  onEvent: (event) => console.log(event.status, event.taskId),
+});
+
+const preset = createWorkspacePreset([
+  { path: ".", name: "root" },
+  { path: "packages/lib", name: "@example/lib", utility: true },
+  {
+    path: "apps/web",
+    name: "web",
+    angular: true,
+    internalDependencies: ["@example/lib"],
+  },
+]);
+// Write preset.config and merge preset.scripts into the corresponding manifests.
+```
+
+Presets leave repository-specific lifecycle hooks such as `prepare` untouched.
+Package `pack` is a normal npm command depending on `build`, with no separate
+`pack:artifact` task. Root monorepo `pack` aggregates the workspace pack tasks.
+Monorepo validation shows root lint once, then `validate:<workspace>` groups
+containing each workspace's build, pack, docs, typecheck, and test checks.
+These groups are also available as root CLI/npm entrypoints; package-local
+`validate` retains its local lint checks. Shared prerequisites still run once.
+Subtask labels omit the package prefix already identified by their containing
+group, at every nesting level. Cross-package groups remain qualified at the
+boundary, then establish context for their own children.
+
+`compileGraph` and `executeGraph` also support an injected command executor for
+non-process integrations. Library calls return results or propagate boundary
+errors; they never set process exit status or install global signal handlers.
+
+## Runtime behavior
+
+- Validate all definitions before execution, including required scripts and cycles.
+- Execute shared tasks once per invocation, with one global leaf-command limit.
+- Documentation waits for its package build; root monorepo docs wait for all
+  workspace builds so generated package exports are available.
+- Default concurrency is available CPUs minus one, with a minimum of one.
+  `--concurrency N` selects a positive integer limit. Non-empty `CI` or `--ci`
+  defaults to sequential commands and streams output; an explicit limit wins.
+- On failure, stop admission, block dependents, cancel owned active processes,
+  and wait for cleanup. Windows cancellation terminates the owned tree;
+  POSIX cancellation escalates from SIGTERM to SIGKILL.
+- Interactive terminals show nested groups with animated running tasks,
+  durations, readable package labels, and distinct waiting/ready/success/failure/
+  skipped/blocked/cancelled states. Unstarted and successful groups collapse by
+  default; groups expand when their subtree starts, while nested unstarted
+  groups remain collapsed. Failed, blocked, and cancelled groups stay expanded;
+  `--collapse false` keeps their subtasks visible (`--collapse true` re-enables
+  collapsing). This option does not affect execution or plain CI output.
+- Groups stay pending until work in their displayed subtree starts. Shared
+  dependencies displayed elsewhere do not activate waiting workspaces or later
+  phases such as pack and test:all. Group timers start with their subtree's first
+  work and stop when the group finishes, without summing overlapping durations.
+- Live status icons are colored: cyan running spinner, green success, red
+  failure, yellow ready/blocked, magenta cancelled, and gray pending/skipped.
+  Set `NO_COLOR` or `FORCE_COLOR=0` to disable colors without losing state icons.
+- Shared prerequisites appear once. Workspace tasks belong to their matching
+  validation group when it is included; otherwise their first containing group
+  owns the display. Empty cross-package aggregate wrappers are omitted.
+  Display ownership never changes execution order or concurrency.
+- `--max-tasks N` caps interactive task rows at a positive integer, default 100,
+  excluding the omitted-task summary. Live redraw fits the terminal viewport;
+  the final listing is preserved in scrollback up to the configured cap.
+  `--collapse false` retains completed children in the final listing after
+  success, failure, or cancellation, regardless of terminal height.
+- CI, redirected output, and `TERM=dumb` use concise non-animated progress.
+  Full transitions remain in JSONL. Animation stops before final diagnostics.
+  Rendering uses `log-update`, not Listr2 or a second task scheduler.
+- Scrolling is enabled by default. `--no-scroll` disables the alternate-screen
+  live view, and `--scroll` remains accepted. Use Up/Down, Page Up/Down, Home/End,
+  or the mouse wheel
+  where SGR mouse reporting is supported (such as compatible Git Bash terminals).
+  A pinned header shows the command; the footer shows the visible line range.
+  Both disappear when the view closes. npm scripts show `npm run <script>`
+  with forwarded arguments; direct calls show `task-runner` and its arguments.
+  Shell quoting is reconstructed, not recovered from shell history.
+  Blank rows separate tasks from the header and footer. The two-line footer
+  shows task counts by status, then the line range/navigation controls.
+  Counts include only unique command tasks throughout the plan, regardless of
+  collapse, scrolling, or the display limit; groups are excluded and zero-count
+  statuses are omitted. Running counts reflect the global command limit, not
+  group spinners, which indicate started work in their displayed subtree.
+  Long headers wrap, bounded to leave task space; tiny terminals omit the
+  header, spacing, or counts as needed. Ctrl+C cancels the run normally.
+  On completion or failure the normal screen/input modes are restored and the
+  final tree is printed into scrollback, with a blank line above and below it.
+  Terminal scrollbars/Shift+wheel are not
+  the live viewport controls. Scrolling activates only with TTY stdin; CI,
+  redirected output, and dumb terminals retain plain output.
+- Logs use `logs/task-runner/<pid>/<workspace-task>-<timestamp>.log`, with
+  filename-safe names and timestamps. Successful/cancelled output logs are
+  removed after cleanup. Failed commands print a readable task name and relative
+  log path without runner stacks; cancellation adds no error diagnostic.
+  Unexpected runner/cleanup failures still surface normally.
+  After success, failure, or cancellation, a persistent task-status summary
+  follows any failure/log messages, including in plain/CI output. It uses the
+  same command-only counts as the live footer.
+  Structured events remain in separate `events-<run-id>.jsonl` files per invocation.
+  Command output may contain sensitive tool output; treat retained logs accordingly.
+
+See the [behavior specification](https://github.com/parloti/task-runner/blob/main/.specs/SPEC.md)
+and [architecture guide](https://github.com/parloti/task-runner/blob/main/.specs/ARCHITECTURE.md).
+For local setup and pull request guidance, see
+[CONTRIBUTING.md](https://github.com/parloti/task-runner/blob/main/CONTRIBUTING.md).

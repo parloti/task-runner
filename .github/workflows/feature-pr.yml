@@ -1,0 +1,109 @@
+name: 🔎 Feature validation and PR to develop
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "fix/**"
+
+# Supersede queued runs for the same branch; the latest push wins.
+concurrency:
+  group: feature-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    name: 🔬 Full validation gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version-file: ".nvmrc"
+
+      - name: 📦 Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: ✅ Run validation gate
+        run: npm run validate
+
+  pull-request:
+    name: 🔀 PR to develop
+    needs: validate
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.validate.result == 'success' }}
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔀 Create or update PR to develop
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const head = context.ref.replace("refs/heads/", "");
+            const base = "develop";
+            const commitSha = context.sha;
+            const shortSha = commitSha.slice(0, 7);
+            const commitTitle = (
+              await github.rest.repos.getCommit({
+                owner,
+                repo,
+                ref: commitSha,
+              })
+            ).data.commit.message.split("\n")[0];
+
+            const body = [
+              `Automated PR from \`${head}\` to \`${base}\`.`,
+              "",
+              `Validation workflow: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Head commit: ${commitTitle} (${shortSha})`,
+              "",
+              "> This branch is merged back into `develop` after review. The `pre-release` branch receives mature branches before release preparation.",
+            ].join("\n");
+
+            const existing = await github.paginate(
+              github.rest.pulls.list,
+              {
+                owner,
+                repo,
+                head: `${owner}:${head}`,
+                base,
+                state: "open",
+                per_page: 100,
+              },
+            );
+
+            if (existing.length > 0) {
+              const [pull] = existing;
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pull.number,
+                title: pull.title,
+                body,
+                state: "open",
+              });
+              core.notice(`Updated PR #${pull.number} for ${head}.`);
+              return;
+            }
+
+            const created = await github.rest.pulls.create({
+              owner,
+              repo,
+              head,
+              base,
+              title: commitTitle,
+              body,
+            });
+            core.notice(`Opened PR #${created.data.number} for ${head}.`);

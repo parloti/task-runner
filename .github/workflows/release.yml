@@ -1,0 +1,88 @@
+name: 🚀 Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: 📦 Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: ✅ Run validation gate
+        run: npm run validate
+
+      - name: 📝 Build generated docs
+        run: npm run docs
+
+      - name: 🔎 Verify release baseline
+        run: |
+          package_name=$(npm pkg get name | tr -d '"')
+
+          if published_version=$(npm view "$package_name" version 2>/dev/null); then
+            expected_tag="v$published_version"
+            major_version=${published_version%%.*}
+            legacy_initial_tag="v$major_version"
+
+            if git rev-parse --verify --quiet "refs/tags/$expected_tag" >/dev/null; then
+              echo "Found published release baseline tag $expected_tag."
+              exit 0
+            fi
+
+            if [ "$published_version" = "$major_version.0.0" ] && git rev-parse --verify --quiet "refs/tags/$legacy_initial_tag" >/dev/null; then
+              legacy_commit=$(git rev-list -n 1 "$legacy_initial_tag")
+
+              git tag "$expected_tag" "$legacy_commit"
+
+              if git push origin "refs/tags/$expected_tag"; then
+                echo "Normalized legacy initial release tag $legacy_initial_tag to $expected_tag."
+                exit 0
+              fi
+
+              git fetch --tags origin
+
+              if git rev-parse --verify --quiet "refs/tags/$expected_tag" >/dev/null; then
+                echo "Found published release baseline tag $expected_tag after refreshing tags."
+                exit 0
+              fi
+            fi
+
+            echo "::error title=Missing release tag::npm already has $package_name@$published_version but git tag $expected_tag is missing. Create the matching tag on the commit that produced the published package before rerunning release."
+            exit 1
+          fi
+
+          echo "No published package found on npm yet. Semantic-release will create the initial release from commit history."
+
+      - name: 🎉 Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Task Runner configuration v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "packages"],
+  "properties": {
+    "version": { "const": 2 },
+    "packages": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^(?:\\.|(?!(?:\\.{1,2})(?:/|$))[^/\\\\:#]+(?:/(?!(?:\\.{1,2})(?:/|$))[^/\\\\:#]+)*)$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": { "pattern": "^[^#]*[^#\\s][^#]*$" },
+        "additionalProperties": { "$ref": "#/$defs/task" }
+      }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?:[^#]+#)?[^#]*[^#\\s][^#]*$"
+          }
+        },
+        "run": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "script"],
+              "properties": {
+                "kind": { "const": "npm" },
+                "script": { "type": "string", "pattern": "\\S" },
+                "args": { "type": "array", "items": { "type": "string" } },
+                "optional": { "type": "boolean" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "command"],
+              "properties": {
+                "kind": { "const": "shell" },
+                "command": { "type": "string", "pattern": "\\S" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

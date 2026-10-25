@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "packages": {
+    ".": {
+      "lint:staged": { "run": { "kind": "npm", "script": "lint:staged" } },
+      "eslint:inspect": {
+        "run": { "kind": "npm", "script": "eslint:inspect" }
+      },
+      "fmt": { "run": { "kind": "npm", "script": "fmt" } },
+      "prettier": { "run": { "kind": "npm", "script": "prettier" } },
+      "check:rules": { "run": { "kind": "npm", "script": "check:rules" } },
+      "eslint": { "run": { "kind": "npm", "script": "eslint" } },
+      "typecheck": { "run": { "kind": "npm", "script": "typecheck" } },
+      "pack": {
+        "dependsOn": ["build"],
+        "run": { "kind": "npm", "script": "pack" }
+      },
+      "test": { "run": { "kind": "npm", "script": "test" } },
+      "tdd": { "run": { "kind": "npm", "script": "tdd" } },
+      "clean": { "run": { "kind": "npm", "script": "clean" } },
+      "compile": {
+        "dependsOn": ["clean"],
+        "run": { "kind": "npm", "script": "compile" }
+      },
+      "resolve-paths": {
+        "dependsOn": ["compile"],
+        "run": { "kind": "npm", "script": "resolve-paths" }
+      },
+      "e2e": { "run": { "kind": "npm", "script": "e2e" } },
+      "mutation": {
+        "dependsOn": ["test"],
+        "run": { "kind": "npm", "script": "mutation" }
+      },
+      "build": { "dependsOn": ["resolve-paths"] },
+      "lint": { "dependsOn": ["prettier", "eslint"] },
+      "eslint:fix-command": {
+        "dependsOn": ["check:rules"],
+        "run": { "kind": "npm", "script": "eslint", "args": ["--fix"] }
+      },
+      "eslint:fix": { "dependsOn": ["eslint:fix-command"] },
+      "lint:fix": { "dependsOn": ["fmt", "eslint:fix"] },
+      "test:all": { "dependsOn": ["test", "e2e", "mutation"] },
+      "docs": {
+        "dependsOn": ["build"],
+        "run": { "kind": "npm", "script": "docs", "optional": true }
+      },
+      "validate": {
+        "dependsOn": ["build", "pack", "typecheck", "lint", "docs", "test:all"]
+      }
+    }
+  }
+}

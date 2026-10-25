@@ -1,0 +1,115 @@
+{
+  "name": "@codeperfect/task-runner",
+  "version": "1.0.0",
+  "description": "Dependency-aware task orchestration for npm scripts and monorepos",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parloti/task-runner.git"
+  },
+  "homepage": "https://github.com/parloti/task-runner#readme",
+  "bugs": "https://github.com/parloti/task-runner/issues",
+  "author": "CodePerfect",
+  "keywords": [
+    "build-automation",
+    "cli",
+    "monorepo",
+    "nodejs",
+    "npm-scripts",
+    "task-orchestration",
+    "task-runner",
+    "typescript"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=24"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./presets": {
+      "types": "./dist/presets/index.d.ts",
+      "import": "./dist/presets/index.js"
+    },
+    "./schema.json": "./schema.json"
+  },
+  "files": [
+    "dist",
+    "schema.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "\n# ---------------- GENERAL  ---------------- #": "",
+    "prepare": "husky && node scripts/install-task-runner-shim.ts",
+    "\n# ------------------ SCM  ------------------ #": "",
+    "commit": "npx --yes git-cz",
+    "\n# ---------------- BUILDING ---------------- #": "",
+    "build": "task-runner run build",
+    "clean": "npx --yes rimraf dist",
+    "\n    • ---------- compilation  ---------- •": "",
+    "pack": "npm pack --pack-destination dist",
+    "compile": "tsc --build --force ./tsconfig.app.json",
+    "resolve-paths": "npx --yes tsc-alias --project ./tsconfig.app.json --resolve-full-paths",
+    "\n# ---------------- LINTING  ---------------- #": "",
+    "\n    • ------------ checking ------------ •": "",
+    "eslint": "npx --yes eslint --max-warnings=0",
+    "lint": "task-runner run lint",
+    "prettier": "npx --yes prettier --ignore-unknown --check .",
+    "\n    • ------------- fixing ------------- •": "",
+    "eslint:fix": "task-runner run eslint:fix",
+    "lint:fix": "task-runner run lint:fix",
+    "lint:staged": "npx --yes tsx scripts/lint-staged.ts",
+    "fmt": "npm run prettier -- --write",
+    "\n    • ------------ helpers  ------------ •": "",
+    "check:rules": "npx --yes eslint-config-prettier eslint.config.ts",
+    "eslint:inspect": "npx --yes @eslint/config-inspector",
+    "\n# ---------------- TESTING  ---------------- #": "",
+    "e2e": "npx --yes vitest run --no-color --config vitest.config.e2e.ts",
+    "mutation": "npx --yes stryker run",
+    "test:all": "task-runner run test:all",
+    "typecheck": "tsc --project tsconfig.types.json",
+    "validate": "task-runner run validate",
+    "validate:ci": "task-runner run validate --ci",
+    "\n    • -------------- unit -------------- •": "",
+    "test": "npx --yes vitest run --no-color",
+    "tdd": "npm run test -- --watch --silent=true --coverage.enabled=false"
+  },
+  "dependencies": {
+    "log-update": "^8.0.0",
+    "ts-brand": "^0.2.0",
+    "wrap-ansi": "^10.0.2"
+  },
+  "devDependencies": {
+    "@codeperfect/commitlint-config-emoji": "^1.1.0",
+    "@commitlint/cz-commitlint": "^21.2.4",
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^12.0.10",
+    "@semantic-release/npm": "^13.2.0",
+    "@semantic-release/release-notes-generator": "^14.1.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/typescript-checker": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.5",
+    "chalk": "^6.0.1",
+    "eslint": "^10.13.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "patch-package": "^8.0.1",
+    "prettier": "^3.9.10",
+    "semantic-release": "^25.0.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}

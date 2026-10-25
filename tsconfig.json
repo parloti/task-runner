@@ -1,0 +1,11 @@
+{
+  "compilerOptions": { "noEmit": true, "rootDir": "./" },
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "include": ["**/*.ts"],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.e2e.json" },
+    { "path": "./tsconfig.spec.json" }
+  ]
+}

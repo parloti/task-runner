@@ -1,0 +1,3 @@
+git config --local i18n.commitEncoding utf-8
+git config --local i18n.logOutputEncoding utf-8
+npx --yes tsx scripts/lint-staged.ts
