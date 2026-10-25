@@ -18,6 +18,19 @@ import { findNpmCli } from "../../src/infrastructure/process.js";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
+// npm run prepends every ancestor node_modules/.bin, including this repository's
+// development shim; consumers must resolve only their installed executable.
+const isolatedEnvironment = (): NodeJS.ProcessEnv => {
+  const entries = Object.entries(process.env).filter(
+    ([name]) => name.toUpperCase() !== "PATH",
+  );
+  const searchPath = (process.env["PATH"] ?? process.env["Path"] ?? "")
+    .split(path.delimiter)
+    .filter((entry) => !/[\\/]node_modules[\\/]\.bin[\\/]?$/i.test(entry))
+    .join(path.delimiter);
+  return { ...Object.fromEntries(entries), PATH: searchPath };
+};
+
 describe("packed distribution", () => {
   it("installs offline into a clean consumer and resolves only compiled bin/library/presets", () => {
     // Arrange
@@ -78,11 +91,14 @@ describe("packed distribution", () => {
       spawnSync(process.execPath, args, {
         cwd,
         encoding: "utf8",
+        env: isolatedEnvironment(),
         timeout: 60000,
       });
     try {
       // Act
       const built = invoke([npm, "run", "build"], packageRoot);
+      if (built.status === 0)
+        writeFileSync(path.join(packageRoot, "dist", "previous.tgz"), "");
       const packed =
         built.status === 0
           ? invoke(
@@ -97,12 +113,16 @@ describe("packed distribution", () => {
               packageRoot,
             )
           : built;
-      const filename =
+      const manifest =
         packed.status === 0
-          ? Object.values(
-              JSON.parse(packed.stdout) as Record<string, { filename: string }>,
-            )[0]?.filename
+          ? (
+              JSON.parse(packed.stdout) as {
+                filename: string;
+                files: { path: string }[];
+              }[]
+            )[0]
           : undefined;
+      const filename = manifest?.filename;
       const archive = filename ? path.join(artifacts, filename) : artifacts;
       const installed =
         packed.status === 0
@@ -145,7 +165,23 @@ describe("packed distribution", () => {
           : installed;
       // Assert
       expect(packed.status, packed.stderr).toBe(0);
+      expect(manifest?.files.map((file) => file.path)).toContain(
+        "dist/bootstrap/cli.js",
+      );
+      expect(
+        manifest?.files.filter((file) => file.path.endsWith(".tgz")),
+      ).toEqual([]);
       expect(installed.status, installed.stderr).toBe(0);
+      expect(
+        existsSync(
+          path.join(
+            consumer,
+            "node_modules",
+            ".bin",
+            process.platform === "win32" ? "task-runner.cmd" : "task-runner",
+          ),
+        ),
+      ).toBe(true);
       expect(cli.status, cli.stderr).toBe(0);
       expect(cli.stderr).toContain("leaf (running");
       expect(cli.stderr).toMatch(/build \(succeeded, \d+\.\ds\)/);

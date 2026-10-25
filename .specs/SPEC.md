@@ -5,7 +5,7 @@
 - Standalone CLI and reusable library for explicit task DAGs and npm scripts.
 - Optional metadata-driven build, pack, lint, test, and validation presets.
 - No caching, watch daemon, remote execution, plugin framework, tool inference,
-  automatic retries, registry publication, or Workspaces Manager dependency.
+  automatic retries, or Workspaces Manager dependency.
 
 ## Execution contract
 
@@ -145,4 +145,5 @@
 - Windows owned-tree cancellation is forced; POSIX allows a bounded graceful
   shutdown before escalation. No unrelated process is a cancellation target.
 - Package and task identity reuse is run-local, not a persistent build cache.
-- Local tarball dependencies are not portable registry releases.
+- Published as `@codeperfect/task-runner`; the package exposes the `task-runner`
+  bin from the compiled distribution and excludes pack archives.

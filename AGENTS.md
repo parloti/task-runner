@@ -20,7 +20,8 @@
   and keep plain output free of ANSI styling.
 - Validate the complete graph before command side effects. Cancel only owned
   process trees, await cleanup, and preserve original errors and failed logs.
-- `npm test` runs tests. `npm run validate` is the full gate. Do not publish;
-  local consumers install the versioned tarball in `artifacts`.
+- `npm test` runs tests. `npm run validate` is the full gate. Releases publish
+  `@codeperfect/task-runner` through semantic-release on `main`; never publish
+  manually. Keep the `task-runner` bin and keep pack archives out of `files`.
 - Current contracts: [.specs/SPEC.md](.specs/SPEC.md).
 - Current structure: [.specs/ARCHITECTURE.md](.specs/ARCHITECTURE.md).

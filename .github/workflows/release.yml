@@ -30,11 +30,11 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Prepare local CLI shim
+        run: node scripts/install-task-runner-shim.ts
+
       - name: ✅ Run validation gate
         run: npm run validate
-
-      - name: 📝 Build generated docs
-        run: npm run docs
 
       - name: 🔎 Verify release baseline
         run: |
@@ -79,10 +79,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
-
-      - name: 🚀 Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          publish_branch: gh-pages
