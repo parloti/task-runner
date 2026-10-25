@@ -79,14 +79,19 @@ describe("process boundary", () => {
   });
   it("locates npm through its environment or Node installation and fails clearly when unavailable", () => {
     // Arrange
+    const directory = mkdtempSync(path.join(os.tmpdir(), "runner-no-npm-"));
     // Act & Assert
-    expect(findNpmCli()).toMatch(/npm-cli\.js$/);
-    expect(() =>
-      findNpmCli({
-        execPath: "C:\\not-installed\\node.exe",
-        env: { PATH: undefined, npm_execpath: undefined },
-      }),
-    ).toThrow("Cannot locate npm");
+    try {
+      expect(findNpmCli()).toMatch(/npm-cli\.js$/);
+      expect(() =>
+        findNpmCli({
+          execPath: path.join(directory, "node"),
+          env: { PATH: undefined, npm_execpath: undefined },
+        }),
+      ).toThrow("Cannot locate npm");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it("does not spawn after cancellation and rejects tasks without commands", async () => {
