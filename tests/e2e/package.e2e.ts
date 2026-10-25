@@ -124,17 +124,30 @@ describe("packed distribution", () => {
           : undefined;
       const filename = manifest?.filename;
       const archive = filename ? path.join(artifacts, filename) : artifacts;
-      const installed =
+      // Resolve dependencies online once to create the consumer lockfile and
+      // prime npm's cache. The clean install below must then work offline.
+      const prepared =
         packed.status === 0
           ? invoke([
               npm,
               "install",
-              "--offline",
+              "--ignore-scripts",
               "--no-audit",
               "--no-fund",
               archive,
             ])
           : packed;
+      const installed =
+        prepared.status === 0
+          ? invoke([
+              npm,
+              "ci",
+              "--offline",
+              "--ignore-scripts",
+              "--no-audit",
+              "--no-fund",
+            ])
+          : prepared;
       const cli =
         installed.status === 0
           ? invoke([
