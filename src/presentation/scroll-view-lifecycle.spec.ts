@@ -3,6 +3,7 @@ import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 
 import { ScrollView } from "./scroll-view";
+import { setTerminalRawMode } from "./scroll-view-lifecycle";
 
 /**
  * Create a fake interactive terminal for scroll view tests.
@@ -32,6 +33,13 @@ const lines = Array.from(
 const summary = "Tasks: 20 | pending: 20";
 
 describe("scrollable terminal viewport", () => {
+  it("reports when raw mode is unavailable", () => {
+    // Arrange & Act & Assert
+    expect(() => {
+      setTerminalRawMode({}, true);
+    }).toThrow("Terminal raw mode is unavailable");
+  });
+
   it.each([true, false])(
     "restores prior input modes, listeners, and screen exactly once: raw=%s",
     (raw) => {

@@ -23,6 +23,65 @@ describe("graph compilation", () => {
     expect(graph.keys().toArray()).toEqual(["start", "left", "right", "end"]);
   });
 
+  it("skips direct command prerequisites but retains group prerequisites", () => {
+    // Arrange
+    const workflow: RunnerConfig = {
+      packages: {
+        ".": {
+          mutation: {
+            dependsOn: ["test", "setup"],
+            run: { kind: "npm", script: "mutation" },
+          },
+          prepare: { run: { kind: "npm", script: "prepare" } },
+          setup: { dependsOn: ["prepare"] },
+          test: { run: { kind: "npm", script: "test" } },
+        },
+      },
+      version: 2,
+    };
+    const workflowScripts = new Map([
+      [".", { mutation: "stryker", prepare: "prepare", test: "vitest" }],
+    ]);
+
+    // Act
+    const graph = compileGraph(workflow, "mutation", workflowScripts);
+
+    // Assert
+    expect(graph.keys().toArray()).toEqual(["prepare", "setup", "mutation"]);
+    expect(graph.get(taskReference(".", "mutation"))?.dependsOn).toEqual([
+      taskReference(".", "setup"),
+    ]);
+  });
+
+  it("keeps command ordering when an aggregate selects both commands", () => {
+    // Arrange
+    const workflow: RunnerConfig = {
+      packages: {
+        ".": {
+          mutation: {
+            dependsOn: ["test"],
+            run: { kind: "npm", script: "mutation" },
+          },
+          test: { run: { kind: "npm", script: "test" } },
+          "test:all": { dependsOn: ["test", "mutation"] },
+        },
+      },
+      version: 2,
+    };
+    const workflowScripts = new Map([
+      [".", { mutation: "stryker", test: "vitest" }],
+    ]);
+
+    // Act
+    const graph = compileGraph(workflow, "test:all", workflowScripts);
+
+    // Assert
+    expect(graph.keys().toArray()).toEqual(["test", "mutation", "test:all"]);
+    expect(graph.get(taskReference(".", "mutation"))?.dependsOn).toEqual([
+      taskReference(".", "test"),
+    ]);
+  });
+
   it.each([
     { bad: { dependsOn: ["missing"] }, error: "Unknown task: missing" },
     {

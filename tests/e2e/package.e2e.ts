@@ -57,6 +57,9 @@ describe("packed distribution", () => {
     cpSync(path.join(root, "src"), path.join(packageRoot, "src"), {
       recursive: true,
     });
+    cpSync(path.join(root, "scripts"), path.join(packageRoot, "scripts"), {
+      recursive: true,
+    });
     symlinkSync(
       path.join(root, "node_modules"),
       path.join(packageRoot, "node_modules"),
