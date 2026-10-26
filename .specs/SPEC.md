@@ -15,7 +15,12 @@
   or entrypoint mappings. Any local task is directly invocable. Bare dependency
   names resolve locally; `<package-path>#<task>` selects another package and
   `.#<task>` explicitly selects the root. `#` is reserved in paths and names.
-  Commandless tasks represent groups and aliases. Version 1 is unsupported.
+  Commandless tasks represent groups and aliases. A directly invoked command
+  starts at that command and omits its direct command prerequisites, which
+  represent earlier steps that may already be complete. Group invocations
+  expand all prerequisites and preserve their ordering constraints. For example,
+  running `mutation` directly skips `test`, while `test:all` runs `test` before
+  `mutation`. Version 1 is unsupported.
   Generated configuration omits empty dependency lists.
 - Package paths are config-relative; invocation selects the nearest containing
   configured package, including when called from a nested directory.

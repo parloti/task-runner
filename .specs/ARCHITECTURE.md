@@ -14,6 +14,9 @@
   resolves local/qualified references into one graph with canonical readable IDs
   (root names or `<package>#<task>`). No serialized arrays or entrypoint map.
 - Graph task IDs become nominal `TaskId` values after reference validation.
+- Graph selection expands group prerequisites. A directly invoked command omits
+  its direct command prerequisites, while retaining group prerequisites; those
+  command edges order tasks when an aggregate selects both commands.
 - A single scheduler admits ready leaf commands and owns cancellation/state.
 - Process adapters implement npm/shell execution, tree termination, and streams.
 - Domain execution errors distinguish expected command failure/cancellation.

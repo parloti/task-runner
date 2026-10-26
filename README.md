@@ -70,7 +70,12 @@ dependency such as `compile` refers to the same package. Use
 `packages/lib#build` for another package or `.#build` for the root.
 The `#` separator is reserved in package paths and task names.
 Commandless tasks provide groups and aliases; any task is directly invocable.
-Generated configuration omits empty dependency lists. Version 1 is not supported.
+Directly invoking a command starts at that command and skips its direct command
+prerequisites, so you can rerun a later step without repeating an earlier one.
+Invoking a group expands all prerequisites and preserves their ordering. For
+example, `task-runner run mutation` skips `test`, while `task-runner run test:all`
+runs `test` before `mutation`. Generated configuration omits empty dependency
+lists. Version 1 is not supported.
 Invoking from a workspace selects that package's task without accidentally
 selecting a root aggregate. Nested
 directories select their nearest containing configured package.

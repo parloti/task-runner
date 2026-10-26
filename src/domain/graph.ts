@@ -12,7 +12,7 @@ import { resolveTaskReference, taskReference } from "./task-reference";
 const taskId = make<TaskId>();
 
 /**
- * Validate task definitions and compile the prerequisites of one target.
+ * Validate task definitions and compile the selected target graph.
  * @param config Version-2 configuration containing package task definitions.
  * @param target Local or qualified entrypoint reference.
  * @param scripts Package scripts used to validate declared npm commands.
@@ -87,14 +87,21 @@ export function compileGraph(
   const targetId = resolveTaskReference(".", target);
   if (!graph.has(targetId)) throw new Error(`Unknown task: ${target}`);
   const selected = new Map<TaskId, CompiledTask>();
-  const select = (name: TaskId): void => {
+  const select = (name: TaskId, entrypoint = false): void => {
     if (selected.has(name)) return;
     const task = graph.get(name);
     if (task === undefined)
       throw new Error(`Compiled task is missing from graph: ${name}`);
-    for (const dependency of task.dependsOn) select(dependency);
-    selected.set(name, task);
+    const dependencies = task.dependsOn.filter((dependency) => {
+      if (!entrypoint || task.run === undefined) return true;
+      const prerequisite = graph.get(dependency);
+      if (prerequisite === undefined)
+        throw new Error(`Compiled task is missing from graph: ${dependency}`);
+      return prerequisite.run === undefined;
+    });
+    for (const dependency of dependencies) select(dependency);
+    selected.set(name, { ...task, dependsOn: dependencies });
   };
-  select(targetId);
+  select(targetId, true);
   return selected;
 }
