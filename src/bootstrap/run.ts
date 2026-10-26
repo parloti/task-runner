@@ -3,19 +3,26 @@ import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import path from "node:path";
 
-import { executeGraph } from "../application/execute.js";
-import type { RunOptions } from "../application/run-options.js";
-import { compileGraph } from "../domain/graph.js";
-import { taskReference } from "../domain/task-reference.js";
-import type { RunResult, TaskEvent } from "../domain/types.js";
+import type { RunOptions } from "../application";
+import type { RunResult, TaskEvent } from "../domain";
+
+import { executeGraph } from "../application";
+import { compileGraph, taskReference } from "../domain";
 import {
+  createProcessExecutor,
   findConfiguration,
   findPackage,
   loadScripts,
   parseConfiguration,
-} from "../infrastructure/configuration.js";
-import { createProcessExecutor } from "../infrastructure/process.js";
+} from "../infrastructure";
 
+/**
+ * Load configuration and run the selected task entrypoint.
+ * @param entrypoint Local or qualified task reference to execute.
+ * @param options Working directory, package scope, and run controls.
+ * @returns Final task states and command errors.
+ * @example `runTasks("build")` runs the local `build` task.
+ */
 export async function runTasks(
   entrypoint: string,
   options: RunOptions = {},
@@ -49,7 +56,7 @@ export async function runTasks(
         runId,
         timestamp: new Date().toISOString(),
         ...event,
-        ...(event.error === undefined ? {} : { error: event.error.message }),
+        ...(event.error !== undefined && { error: event.error.message }),
       })}\n`,
     );
     options.onEvent?.(event);
@@ -57,6 +64,6 @@ export async function runTasks(
   return executeGraph(graph, createProcessExecutor(root, directory, ci), {
     concurrency,
     onEvent,
-    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    ...(options.signal !== undefined && { signal: options.signal }),
   });
 }

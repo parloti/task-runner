@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseArguments } from "./cli.js";
+
+import { parseArguments } from "./cli";
 
 describe("command-line contract", () => {
   it("accepts --scroll without changing execution options", () => {
@@ -14,9 +15,9 @@ describe("command-line contract", () => {
     ]);
     // Assert
     expect(result.options).toEqual({
-      scroll: true,
       collapse: false,
       maxTasks: 1000,
+      scroll: true,
     });
   });
   it.each([1, 100, 250])("parses task-list limit %i", (maxTasks) => {
@@ -53,10 +54,10 @@ describe("command-line contract", () => {
       entrypoint: "build",
       help: false,
       options: {
-        config: "custom.json",
-        package: "apps/web",
         ci: true,
         concurrency: 3,
+        config: "custom.json",
+        package: "apps/web",
         scroll: true,
       },
     });

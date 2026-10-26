@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { compileGraph } from "./graph.js";
-import { resolveTaskReference, taskReference } from "./task-reference.js";
-import type { RunnerConfig, TaskDefinition } from "./types.js";
+
+import type { RunnerConfig, TaskDefinition } from "./types";
+
+import { compileGraph } from "./graph";
+import { resolveTaskReference, taskReference } from "./task-reference";
 
 const tasks: Record<string, TaskDefinition> = {
-  start: { run: { kind: "npm", script: "check" } },
+  end: { dependsOn: ["left", "right"] },
   left: { dependsOn: ["start"] },
   right: { dependsOn: ["start"] },
-  end: { dependsOn: ["left", "right"] },
+  start: { run: { kind: "npm", script: "check" } },
   unrelated: {},
 };
-const config: RunnerConfig = { version: 2, packages: { ".": tasks } };
+const config: RunnerConfig = { packages: { ".": tasks }, version: 2 };
 const scripts = new Map([[".", { check: "echo checked" }]]);
 
 describe("graph compilation", () => {
@@ -18,7 +20,7 @@ describe("graph compilation", () => {
     // Arrange & Act
     const graph = compileGraph(config, "end", scripts);
     // Assert
-    expect([...graph.keys()]).toEqual(["start", "left", "right", "end"]);
+    expect(graph.keys().toArray()).toEqual(["start", "left", "right", "end"]);
   });
 
   it.each([
@@ -37,7 +39,7 @@ describe("graph compilation", () => {
       // Arrange & Act & Assert
       expect(() =>
         compileGraph(
-          { version: 2, packages: { ".": { ...tasks, bad } } },
+          { packages: { ".": { ...tasks, bad } }, version: 2 },
           "end",
           scripts,
         ),
@@ -48,15 +50,15 @@ describe("graph compilation", () => {
   it("skips only explicitly optional missing scripts", () => {
     // Arrange
     const optional: RunnerConfig = {
-      version: 2,
       packages: {
-        ".": { docs: { run: { kind: "npm", script: "docs", optional: true } } },
+        ".": { docs: { run: { kind: "npm", optional: true, script: "docs" } } },
       },
+      version: 2,
     };
     // Act & Assert
-    expect([...compileGraph(optional, "docs", scripts).values()][0]?.skip).toBe(
-      true,
-    );
+    expect(
+      compileGraph(optional, "docs", scripts).values().next().value?.skip,
+    ).toBe(true);
     expect(() => compileGraph(config, "absent", scripts)).toThrow(
       "Unknown task: absent",
     );
@@ -65,12 +67,11 @@ describe("graph compilation", () => {
   it("resolves local, cross-package, root references and aliases without collisions", () => {
     // Arrange
     const scoped: RunnerConfig = {
-      version: 2,
       packages: {
         ".": {
-          prepare: {},
           build: { dependsOn: ["apps/web#build"] },
           "build:web": { dependsOn: ["apps/web#build"] },
+          prepare: {},
         },
         "apps/web": {
           build: { dependsOn: ["compile"] },
@@ -78,6 +79,7 @@ describe("graph compilation", () => {
         },
         "packages/lib": { build: {} },
       },
+      version: 2,
     };
     const manifests = new Map([
       [".", {}],
@@ -87,7 +89,7 @@ describe("graph compilation", () => {
     // Act
     const graph = compileGraph(scoped, "build", manifests);
     // Assert
-    expect([...graph.keys()]).toEqual([
+    expect(graph.keys().toArray()).toEqual([
       "prepare",
       "packages/lib#build",
       "apps/web#compile",
@@ -95,7 +97,7 @@ describe("graph compilation", () => {
       "build",
     ]);
     expect(
-      [...compileGraph(scoped, "build:web", manifests).keys()].at(-1),
+      compileGraph(scoped, "build:web", manifests).keys().toArray().at(-1),
     ).toBe("build:web");
     expect(() => compileGraph(scoped, "build", scripts)).toThrow(
       "Unknown package: apps/web",
@@ -105,11 +107,11 @@ describe("graph compilation", () => {
   it("detects cross-package cycles", () => {
     // Arrange
     const cyclic: RunnerConfig = {
-      version: 2,
       packages: {
         ".": { build: { dependsOn: ["lib#build"] } },
         lib: { build: { dependsOn: [".#build"] } },
       },
+      version: 2,
     };
     // Act & Assert
     expect(() =>

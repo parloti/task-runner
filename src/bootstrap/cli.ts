@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-import { parseArguments } from "../presentation/cli.js";
-import { TerminalProgress } from "../presentation/progress.js";
-import { formatInvocation } from "../presentation/invocation.js";
-import { runTasks } from "./run.js";
-import { CommandFailedError } from "../domain/execution-errors.js";
+import { CommandFailedError } from "../domain";
+import {
+  formatInvocation,
+  parseArguments,
+  TerminalProgress,
+} from "../presentation";
+import { cliExitCode, CliSignalError } from "./cli-errors";
+import { runTasks } from "./run";
 
 const controller = new AbortController();
-let exitCode = 1;
 const interrupt = (): void => {
-  exitCode = 130;
-  controller.abort(new Error("Interrupted"));
+  controller.abort(new CliSignalError(130, "Interrupted"));
 };
 const terminate = (): void => {
-  exitCode = 143;
-  controller.abort(new Error("Terminated"));
+  controller.abort(new CliSignalError(143, "Terminated"));
 };
 process.on("SIGINT", interrupt);
 process.on("SIGTERM", terminate);
@@ -26,17 +26,17 @@ try {
   } else {
     const progress = new TerminalProgress(
       process.stderr,
-      process.stderr.isTTY === true &&
+      process.stderr.isTTY &&
         !process.env["CI"] &&
         input.options.ci !== true &&
         process.env["TERM"] !== "dumb",
       input.options.collapse,
       input.options.maxTasks,
-      input.options.scroll === true && process.stdin.isTTY === true
+      input.options.scroll && process.stdin.isTTY
         ? {
+            command: formatInvocation(process.argv.slice(2), process.env),
             input: process.stdin,
             onInterrupt: interrupt,
-            command: formatInvocation(process.argv.slice(2), process.env),
           }
         : undefined,
     );
@@ -44,14 +44,18 @@ try {
     try {
       result = await runTasks(input.entrypoint, {
         ...input.options,
+        onEvent: (event) => {
+          progress.update(event);
+        },
+        onPlan: (graph, target) => {
+          progress.start(graph, target);
+        },
         signal: controller.signal,
-        onPlan: (graph, target) => progress.start(graph, target),
-        onEvent: (event) => progress.update(event),
       });
     } finally {
       progress.stop();
     }
-    process.exitCode = result.success ? 0 : exitCode;
+    process.exitCode = cliExitCode(result.success, controller.signal.reason);
     for (const error of result.errors)
       console.error(
         error instanceof CommandFailedError ? error.message : error,
@@ -60,7 +64,7 @@ try {
   }
 } catch (error) {
   console.error(error);
-  process.exitCode = exitCode;
+  process.exitCode = cliExitCode(false, controller.signal.reason);
 } finally {
   process.off("SIGINT", interrupt);
   process.off("SIGTERM", terminate);

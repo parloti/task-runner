@@ -3,13 +3,22 @@ import { make } from "ts-brand";
 import type {
   CompiledTask,
   RunnerConfig,
-  TaskId,
   TaskDefinition,
-} from "./types.js";
-import { resolveTaskReference, taskReference } from "./task-reference.js";
+  TaskId,
+} from "./types";
+
+import { resolveTaskReference, taskReference } from "./task-reference";
 
 const taskId = make<TaskId>();
 
+/**
+ * Validate task definitions and compile the prerequisites of one target.
+ * @param config Version-2 configuration containing package task definitions.
+ * @param target Local or qualified entrypoint reference.
+ * @param scripts Package scripts used to validate declared npm commands.
+ * @returns Reachable tasks keyed by canonical task ID.
+ * @example `compileGraph(config, "build", scripts)` prepares the `build` graph.
+ */
 export function compileGraph(
   config: RunnerConfig,
   target: string,
@@ -66,10 +75,10 @@ export function compileGraph(
       );
     }
     graph.set(taskId(name), {
+      dependsOn: dependencies,
       id: taskId(name),
       package: definition.package,
-      dependsOn: dependencies,
-      ...(run === undefined ? {} : { run }),
+      ...(run !== undefined && { run }),
       skip: missing,
     });
   };
@@ -80,7 +89,9 @@ export function compileGraph(
   const selected = new Map<TaskId, CompiledTask>();
   const select = (name: TaskId): void => {
     if (selected.has(name)) return;
-    const task = graph.get(name)!;
+    const task = graph.get(name);
+    if (task === undefined)
+      throw new Error(`Compiled task is missing from graph: ${name}`);
     for (const dependency of task.dependsOn) select(dependency);
     selected.set(name, task);
   };

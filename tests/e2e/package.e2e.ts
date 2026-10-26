@@ -1,22 +1,24 @@
+import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
-  cpSync,
   copyFileSync,
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  rmSync,
+  cpSync,
   existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { findNpmCli } from "../../src/infrastructure/process.js";
-
 const root = fileURLToPath(new URL("../../", import.meta.url));
+
+const npm = process.env["npm_execpath"];
+if (npm === undefined) throw new Error("The e2e suite must run through npm");
 
 // npm run prepends every ancestor node_modules/.bin, including this repository's
 // development shim; consumers must resolve only their installed executable.
@@ -65,34 +67,33 @@ describe("packed distribution", () => {
       JSON.stringify({
         name: "clean-consumer",
         private: true,
-        type: "module",
         scripts: {
           check: "task-runner run check",
           leaf: `node -e "process.exitCode=0"`,
         },
+        type: "module",
       }),
     );
     writeFileSync(
       path.join(consumer, "task-runner.json"),
       JSON.stringify({
-        version: 2,
         packages: {
           ".": {
-            check: { dependsOn: ["build", "docs"] },
             build: { dependsOn: ["end"] },
+            check: { dependsOn: ["build", "docs"] },
+            docs: { run: { kind: "npm", optional: true, script: "docs" } },
             end: { run: { kind: "npm", script: "leaf" } },
-            docs: { run: { kind: "npm", script: "docs", optional: true } },
           },
         },
+        version: 2,
       }),
     );
-    const npm = findNpmCli();
     const invoke = (args: string[], cwd = consumer) =>
       spawnSync(process.execPath, args, {
         cwd,
         encoding: "utf8",
         env: isolatedEnvironment(),
-        timeout: 60000,
+        timeout: 60_000,
       });
     try {
       // Act
@@ -177,14 +178,14 @@ describe("packed distribution", () => {
             ])
           : installed;
       // Assert
-      expect(packed.status, packed.stderr).toBe(0);
+      assert.equal(packed.status, 0, packed.stderr);
       expect(manifest?.files.map((file) => file.path)).toContain(
         "dist/bootstrap/cli.js",
       );
       expect(
         manifest?.files.filter((file) => file.path.endsWith(".tgz")),
       ).toEqual([]);
-      expect(installed.status, installed.stderr).toBe(0);
+      assert.equal(installed.status, 0, installed.stderr);
       expect(
         existsSync(
           path.join(
@@ -195,17 +196,17 @@ describe("packed distribution", () => {
           ),
         ),
       ).toBe(true);
-      expect(cli.status, cli.stderr).toBe(0);
+      assert.equal(cli.status, 0, cli.stderr);
       expect(cli.stderr).toContain("leaf (running");
       expect(cli.stderr).toMatch(/build \(succeeded, \d+\.\ds\)/);
       expect(cli.stderr).toContain("docs (skipped)");
       expect(cli.stderr).toMatch(/check \(succeeded, \d+\.\ds\)/);
       expect(cli.stderr).not.toContain('[".","');
-      expect(cli.stderr).not.toContain("\u001b[");
+      expect(cli.stderr).not.toContain("\u{1B}[");
       expect(cli.stderr).toMatch(
         /Tasks: 2 \| succeeded: 1 \| skipped: 1\r?\n\r?\n$/,
       );
-      expect(library.status, library.stderr).toBe(0);
+      assert.equal(library.status, 0, library.stderr);
       expect(library.stdout).toContain('"success":true');
       expect(library.stdout).toContain('"build":"task-runner run build"');
       expect(
@@ -243,7 +244,7 @@ describe("packed distribution", () => {
         ),
       ).toBe(true);
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { force: true, recursive: true });
     }
-  }, 90000);
+  }, 90_000);
 });

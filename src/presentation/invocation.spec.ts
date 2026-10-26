@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatInvocation } from "./invocation.js";
+
+import { formatInvocation } from "./invocation";
 
 const args = [
   "run",
@@ -91,7 +92,7 @@ describe("display invocation", () => {
         "",
         'a"b',
         "$HOME",
-        "\u001b[2J\n",
+        "\u{1B}[2J\n",
       ],
       {},
     );

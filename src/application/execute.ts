@@ -5,15 +5,24 @@ import type {
   TaskEvent,
   TaskId,
   TaskStatus,
-} from "../domain/types.js";
-import { TaskCancelledError } from "../domain/execution-errors.js";
+} from "../domain";
+
+import { normalizeExecutionError, TaskCancelledError } from "../domain";
 
 export interface ExecutionOptions {
   readonly concurrency: number;
-  readonly signal?: AbortSignal;
   readonly onEvent?: (event: TaskEvent) => void;
+  readonly signal?: AbortSignal;
 }
 
+/**
+ * Execute a validated task graph with bounded command concurrency.
+ * @param graph Validated tasks keyed by canonical task ID.
+ * @param execute Adapter that runs one command task.
+ * @param options Concurrency, cancellation, and event callbacks.
+ * @returns Final state and error information for the graph.
+ * @example `executeGraph(graph, execute, { concurrency: 2 })` runs at most two commands at once.
+ */
 export async function executeGraph(
   graph: ReadonlyMap<TaskId, CompiledTask>,
   execute: ExecuteCommand,
@@ -23,7 +32,9 @@ export async function executeGraph(
     throw new Error("Concurrency must be a positive integer");
   }
   const controller = new AbortController();
-  const cancel = (): void => controller.abort(options.signal?.reason);
+  const cancel = (): void => {
+    controller.abort(options.signal?.reason);
+  };
   if (options.signal?.aborted) cancel();
   options.signal?.addEventListener("abort", cancel, { once: true });
   const states = new Map<TaskId, TaskStatus>();
@@ -37,11 +48,11 @@ export async function executeGraph(
   ): void => {
     states.set(task.id, status);
     options.onEvent?.({
-      taskId: task.id,
       package: task.package,
       status,
-      ...(durationMs === undefined ? {} : { durationMs }),
-      ...(error === undefined ? {} : { error }),
+      taskId: task.id,
+      ...(durationMs !== undefined && { durationMs }),
+      ...(error !== undefined && { error }),
     });
   };
   for (const task of graph.values()) states.set(task.id, "pending");
@@ -49,15 +60,12 @@ export async function executeGraph(
     transition(task, "ready");
     transition(task, "running");
     const started = Date.now();
-    const execution = Promise.resolve().then(async () => {
+    const execution = Promise.try(async () => {
       try {
         await execute(task, controller.signal);
         transition(task, "succeeded", Date.now() - started);
       } catch (error) {
-        const failure =
-          error instanceof Error
-            ? error
-            : new Error(String(error), { cause: error });
+        const failure = normalizeExecutionError(error);
         const interrupted = controller.signal.aborted;
         const cancelled = failure instanceof TaskCancelledError;
         if (!cancelled) errors.push(failure);
@@ -76,7 +84,7 @@ export async function executeGraph(
   };
   try {
     while (
-      [...states.values()].some((state) => state === "pending") ||
+      states.values().some((state) => state === "pending") ||
       active.size > 0
     ) {
       let progressed = false;
@@ -110,7 +118,7 @@ export async function executeGraph(
       if (active.size > 0) await Promise.race(active.values());
       else if (
         !progressed &&
-        [...states.values()].some((state) => state === "pending")
+        states.values().some((state) => state === "pending")
       ) {
         throw new Error("Task graph cannot make progress");
       }
@@ -121,10 +129,10 @@ export async function executeGraph(
     await Promise.allSettled(active.values());
   }
   return {
-    success: ![...states.values()].some((state) =>
-      ["failed", "cancelled", "blocked"].includes(state),
-    ),
-    states,
     errors,
+    states,
+    success: states
+      .values()
+      .every((state) => !["blocked", "cancelled", "failed"].includes(state)),
   };
 }

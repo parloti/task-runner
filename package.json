@@ -3,32 +3,11 @@
   "version": "1.0.0",
   "description": "Dependency-aware task orchestration for npm scripts and monorepos",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/parloti/task-runner.git"
-  },
+  "repository": "github:parloti/task-runner",
   "homepage": "https://github.com/parloti/task-runner#readme",
   "bugs": "https://github.com/parloti/task-runner/issues",
   "author": "CodePerfect",
-  "keywords": [
-    "build-automation",
-    "cli",
-    "monorepo",
-    "nodejs",
-    "npm-scripts",
-    "task-orchestration",
-    "task-runner",
-    "typescript"
-  ],
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "task-runner": "./dist/bootstrap/cli.js"
-  },
-  "engines": {
-    "node": ">=24"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -37,17 +16,18 @@
     },
     "./presets": {
       "types": "./dist/presets/index.d.ts",
-      "import": "./dist/presets/index.js"
+      "import": "./dist/presets/index.js",
+      "default": "./dist/presets/index.js"
     },
     "./schema.json": "./schema.json"
   },
-  "files": [
-    "dist",
-    "!dist/*.tgz",
-    "schema.json",
-    "README.md",
-    "LICENSE"
-  ],
+  "bin": {
+    "task-runner": "./dist/bootstrap/cli.js"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24.18.0"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -87,6 +67,21 @@
     "test": "npx --yes vitest run --no-color",
     "tdd": "npm run test -- --watch --silent=true --coverage.enabled=false"
   },
+  "files": [
+    "dist",
+    "!dist/*.tgz",
+    "schema.json"
+  ],
+  "keywords": [
+    "build-automation",
+    "cli",
+    "monorepo",
+    "nodejs",
+    "npm-scripts",
+    "task-orchestration",
+    "task-runner",
+    "typescript"
+  ],
   "dependencies": {
     "log-update": "^8.0.0",
     "ts-brand": "^0.2.0",
@@ -94,8 +89,14 @@
   },
   "devDependencies": {
     "@codeperfect/commitlint-config-emoji": "^1.1.0",
+    "@codeperfect/eslint-config": "^2.4.0",
+    "@codeperfect/eslint-plugin": "^3.2.1",
+    "@codeperfect/task-runner": "^1.1.0",
     "@commitlint/cz-commitlint": "^21.2.4",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
     "@eslint/js": "^10.0.1",
+    "@eslint/json": "^2.1.1",
+    "@eslint/markdown": "^8.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/github": "^12.0.10",
     "@semantic-release/npm": "^13.2.0",
@@ -103,11 +104,23 @@
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/typescript-checker": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.5",
+    "@vitest/eslint-plugin": "^1.6.28",
     "chalk": "^6.0.1",
     "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^7.3.0",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-jsdoc": "^65.4.2",
+    "eslint-plugin-package-json": "^1.11.0",
+    "eslint-plugin-perfectionist": "^5.13.0",
+    "eslint-plugin-prettier": "^5.5.7",
+    "eslint-plugin-unicorn": "^79.0.0",
     "husky": "^9.1.7",
+    "jiti": "^2.7.0",
     "lint-staged": "^17.6.0",
     "patch-package": "^8.0.1",
     "prettier": "^3.9.10",

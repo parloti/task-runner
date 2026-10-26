@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { compileGraph } from "../domain/graph.js";
-import { createWorkspacePreset } from "./index.js";
+
+import { compileGraph } from "../domain";
+import { createWorkspacePreset } from "./";
 
 describe("workflow presets", () => {
   it("omits empty dependencies from aggregates with no eligible workspace commands", () => {
     // Arrange & Act
     const preset = createWorkspacePreset([
-      { path: ".", name: "root" },
-      { path: "lib", name: "library", utility: true },
+      { name: "root", path: "." },
+      { name: "library", path: "lib", utility: true },
     ]);
     // Assert
-    expect(preset.config.packages["."]!["e2e"]).toEqual({});
+    expect(preset.config.packages["."]?.["e2e"]).toEqual({});
     expect(JSON.stringify(preset.config)).not.toContain('"dependsOn":[]');
   });
 
@@ -18,8 +19,8 @@ describe("workflow presets", () => {
     // Arrange & Act & Assert
     expect(() =>
       createWorkspacePreset([
-        { path: ".", name: "root" },
-        { path: "lib#part", name: "library" },
+        { name: "root", path: "." },
+        { name: "library", path: "lib#part" },
       ]),
     ).toThrow("# is reserved");
   });
@@ -28,11 +29,11 @@ describe("workflow presets", () => {
     (monorepo) => {
       // Arrange
       const preset = createWorkspacePreset([
-        { path: ".", name: "root" },
+        { name: "root", path: "." },
         ...(monorepo
           ? [
-              { path: "packages/lib", name: "lib", utility: true },
-              { path: "apps/web", name: "web", internalDependencies: ["lib"] },
+              { name: "lib", path: "packages/lib", utility: true },
+              { internalDependencies: ["lib"], name: "web", path: "apps/web" },
             ]
           : []),
       ]);
@@ -45,14 +46,15 @@ describe("workflow presets", () => {
       // Act
       const graph = compileGraph(preset.config, "docs", scripts);
       // Assert
-      expect(preset.config.packages["."]!["docs"]?.dependsOn).toEqual([
+      expect(preset.config.packages["."]?.["docs"]?.dependsOn).toEqual([
         "build",
       ]);
-      expect([...graph.keys()].at(-1)).toBe("docs");
-      for (const path of monorepo ? ["packages/lib", "apps/web"] : ["."]) {
+      expect(graph.keys().toArray().at(-1)).toBe("docs");
+      const packagePaths = monorepo ? ["packages/lib", "apps/web"] : ["."];
+      for (const path of packagePaths) {
         const build = path === "." ? "build" : `${path}#build`;
-        expect([...graph.keys()]).toContain(build);
-        expect(preset.config.packages[path]!["docs"]?.dependsOn).toEqual([
+        expect(graph.keys().toArray()).toContain(build);
+        expect(preset.config.packages[path]?.["docs"]?.dependsOn).toEqual([
           "build",
         ]);
       }
@@ -60,18 +62,18 @@ describe("workflow presets", () => {
   );
   it("leaves repository-specific lifecycle hooks unmanaged", () => {
     // Arrange & Act
-    const preset = createWorkspacePreset([{ path: ".", name: "root" }]);
+    const preset = createWorkspacePreset([{ name: "root", path: "." }]);
     // Assert
     expect(preset.scripts["."]).not.toHaveProperty("prepare");
   });
   it("quotes aliases when workspace directories contain spaces", () => {
     // Arrange & Act
     const preset = createWorkspacePreset([
-      { path: ".", name: "root" },
-      { path: "packages/my library", name: "library" },
+      { name: "root", path: "." },
+      { name: "library", path: "packages/my library" },
     ]);
     // Assert
-    expect(preset.scripts["."]!["build:my library"]).toBe(
+    expect(preset.scripts["."]?.["build:my library"]).toBe(
       'task-runner run "build:my library"',
     );
   });
@@ -79,23 +81,25 @@ describe("workflow presets", () => {
     // Arrange & Act
     const preset = createWorkspacePreset([
       {
-        path: ".",
-        name: "extension",
         extension: true,
+        name: "extension",
+        path: ".",
         playwright: true,
         styles: true,
       },
     ]);
     // Assert
-    expect(preset.scripts["."]!["pack"]).toBe("npx --yes @vscode/vsce package");
-    expect(preset.scripts["."]!["e2e"]).toBe("npx --yes playwright test");
-    expect(preset.scripts["."]!["stylelint:fix"]).toBe(
+    expect(preset.scripts["."]?.["pack"]).toBe(
+      "npx --yes @vscode/vsce package",
+    );
+    expect(preset.scripts["."]?.["e2e"]).toBe("npx --yes playwright test");
+    expect(preset.scripts["."]?.["stylelint:fix"]).toBe(
       "npm run stylelint -- --fix",
     );
   });
   it("generates standalone dependency ordering and optional docs", () => {
     // Arrange
-    const preset = createWorkspacePreset([{ path: ".", name: "one" }]);
+    const preset = createWorkspacePreset([{ name: "one", path: "." }]);
     // Act
     const target = "build";
     const graph = compileGraph(
@@ -105,11 +109,12 @@ describe("workflow presets", () => {
     );
     // Assert
     expect(
-      [...graph.values()].map((task) =>
-        task.run?.kind === "npm" ? task.run.script : "group",
-      ),
+      graph
+        .values()
+        .map((task) => (task.run?.kind === "npm" ? task.run.script : "group"))
+        .toArray(),
     ).toEqual(["clean", "compile", "resolve-paths", "group"]);
-    expect(preset.scripts["."]!["validate:ci"]).toBe(
+    expect(preset.scripts["."]?.["validate:ci"]).toBe(
       "task-runner run validate --ci",
     );
   });
@@ -117,14 +122,14 @@ describe("workflow presets", () => {
   it("builds workspace dependencies once and gates root validation without workspace lint", () => {
     // Arrange
     const preset = createWorkspacePreset([
-      { path: ".", name: "root", styles: true },
-      { path: "packages/lib", name: "@example/lib", utility: true },
+      { name: "root", path: ".", styles: true },
+      { name: "@example/lib", path: "packages/lib", utility: true },
       {
-        path: "apps/web",
-        name: "web",
         angular: true,
         browser: true,
         internalDependencies: ["@example/lib"],
+        name: "web",
+        path: "apps/web",
       },
     ]);
     // Act
@@ -136,28 +141,33 @@ describe("workflow presets", () => {
     );
     // Assert
     expect(
-      [...graph.values()]
+      graph
+        .values()
         .filter(
           (task) => task.run?.kind === "npm" && task.run.script === "eslint",
         )
-        .map((task) => task.package),
+        .map((task) => task.package)
+        .toArray(),
     ).toEqual(["."]);
     expect(
-      [...graph.values()].filter((task) => task.id === "packages/lib#build"),
+      graph
+        .values()
+        .filter((task) => task.id === "packages/lib#build")
+        .toArray(),
     ).toHaveLength(1);
-    expect(preset.scripts["apps/web"]!["test"]).toContain("ng test");
-    expect(preset.scripts["apps/web"]!["mutation"]).toBeUndefined();
-    expect(preset.scripts["packages/lib"]!["e2e"]).toBeUndefined();
-    expect(preset.config.packages["."]!["build:web"]?.dependsOn).toEqual([
+    expect(preset.scripts["apps/web"]?.["test"]).toContain("ng test");
+    expect(preset.scripts["apps/web"]?.["mutation"]).toBeUndefined();
+    expect(preset.scripts["packages/lib"]?.["e2e"]).toBeUndefined();
+    expect(preset.config.packages["."]?.["build:web"]?.dependsOn).toEqual([
       "apps/web#build",
     ]);
-    expect(preset.config.packages["."]![target]?.dependsOn).toEqual([
+    expect(preset.config.packages["."]?.[target]?.dependsOn).toEqual([
       "lint",
       "validate:lib",
       "validate:web",
       "docs",
     ]);
-    expect(preset.scripts["."]!["validate:web"]).toBe(
+    expect(preset.scripts["."]?.["validate:web"]).toBe(
       "task-runner run validate:web",
     );
     const workspaceGraph = compileGraph(
@@ -166,12 +176,14 @@ describe("workflow presets", () => {
       new Map(Object.entries(preset.scripts)),
     );
     expect(
-      [...workspaceGraph.values()].some(
-        (task) => task.run?.kind === "npm" && task.run.script === "eslint",
-      ),
+      workspaceGraph
+        .values()
+        .some(
+          (task) => task.run?.kind === "npm" && task.run.script === "eslint",
+        ),
     ).toBe(false);
     expect(
-      preset.config.packages["apps/web"]!["validate"]?.dependsOn,
+      preset.config.packages["apps/web"]?.["validate"]?.dependsOn,
     ).toContain("lint");
   });
 
@@ -180,8 +192,8 @@ describe("workflow presets", () => {
     (monorepo) => {
       // Arrange & Act
       const preset = createWorkspacePreset([
-        { path: ".", name: "root" },
-        ...(monorepo ? [{ path: "apps/web", name: "web" }] : []),
+        { name: "root", path: "." },
+        ...(monorepo ? [{ name: "web", path: "apps/web" }] : []),
       ]);
       // Assert
       expect(preset.config).not.toHaveProperty("tasks");
@@ -190,18 +202,21 @@ describe("workflow presets", () => {
         expect(pkg).not.toHaveProperty("pack:artifact");
         for (const task of Object.values(pkg)) {
           expect(task).not.toHaveProperty("package");
-          if (task.dependsOn !== undefined)
-            expect(task.dependsOn.length).toBeGreaterThan(0);
+          expect(
+            task.dependsOn === undefined || task.dependsOn.length > 0,
+          ).toBe(true);
         }
-        if (!monorepo || packagePath !== ".") {
-          expect(pkg["pack"]).toEqual({
-            dependsOn: ["build"],
-            run: { kind: "npm", script: "pack" },
-          });
-          expect(preset.scripts[packagePath]!["pack"]).toBe(
-            "npm pack --pack-destination dist",
-          );
+        if (monorepo && packagePath === ".") {
+          continue;
         }
+
+        expect(pkg["pack"]).toEqual({
+          dependsOn: ["build"],
+          run: { kind: "npm", script: "pack" },
+        });
+        expect(preset.scripts[packagePath]?.["pack"]).toBe(
+          "npm pack --pack-destination dist",
+        );
       }
       expect(JSON.stringify(preset.config)).not.toContain('\\"');
     },
@@ -211,21 +226,21 @@ describe("workflow presets", () => {
     { packages: [] },
     {
       packages: [
-        { path: ".", name: "root" },
-        { path: "a/x", name: "a" },
-        { path: "b/x", name: "b" },
+        { name: "root", path: "." },
+        { name: "a", path: "a/x" },
+        { name: "b", path: "b/x" },
       ],
     },
     {
       packages: [
-        { path: ".", name: "root" },
-        { path: "a", name: "root" },
+        { name: "root", path: "." },
+        { name: "root", path: "a" },
       ],
     },
     {
       packages: [
-        { path: ".", name: "root" },
-        { path: "a", name: "a", internalDependencies: ["absent"] },
+        { name: "root", path: "." },
+        { internalDependencies: ["absent"], name: "a", path: "a" },
       ],
     },
   ])("rejects invalid package inventories", ({ packages }) => {

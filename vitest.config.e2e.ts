@@ -17,7 +17,7 @@ const config = defineConfig({
     pool: "threads",
     restoreMocks: true,
     setupFiles: ["vitest.setup.ts"],
-    testTimeout: 60000,
+    testTimeout: 60_000,
     unstubEnvs: true,
     unstubGlobals: true,
   },

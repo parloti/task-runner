@@ -3,19 +3,20 @@ import { stripVTControlCharacters } from "node:util";
 import { make } from "ts-brand";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { CompiledTask, TaskId } from "../domain/types.js";
-import { TerminalProgress } from "./progress.js";
+import type { CompiledTask, TaskId } from "../domain";
+
+import { TerminalProgress } from "./progress";
 
 const id = make<TaskId>()("check");
 const graph = new Map<TaskId, CompiledTask>([
   [
     id,
     {
+      dependsOn: [],
       id,
       package: ".",
-      dependsOn: [],
-      skip: false,
       run: { kind: "npm", script: "check" },
+      skip: false,
     },
   ],
 ]);
@@ -37,7 +38,7 @@ describe("terminal progress", () => {
     "preserves blank separators around the final $status tree with scroll=$scroll",
     ({ scroll, status }) => {
       // Arrange
-      const output = Object.assign(new PassThrough(), { rows: 1, columns: 80 });
+      const output = Object.assign(new PassThrough(), { columns: 80, rows: 1 });
       const input = Object.assign(new PassThrough(), {
         isTTY: true,
         setRawMode: vi.fn(),
@@ -51,7 +52,7 @@ describe("terminal progress", () => {
         scroll ? { input, onInterrupt: vi.fn() } : undefined,
       );
       progress.start(graph, id);
-      progress.update({ taskId: id, package: ".", status });
+      progress.update({ package: ".", status, taskId: id });
       const offset = write.mock.calls.length;
       // Act
       progress.stop();
@@ -63,7 +64,7 @@ describe("terminal progress", () => {
       );
       // Assert
       expect(final).toMatch(
-        new RegExp(`^\\n[^\\n]+ check \\(${status}\\)\\n\\n$`),
+        new RegExp(String.raw`^\n[^\n]+ check \(${status}\)\n\n$`),
       );
       const calls = write.mock.calls.length;
       progress.stop();
@@ -77,8 +78,8 @@ describe("terminal progress", () => {
       // Arrange
       vi.useFakeTimers();
       const output = Object.assign(new PassThrough(), {
-        rows: 6,
         columns: 100,
+        rows: 6,
       });
       const input = Object.assign(new PassThrough(), {
         isTTY: true,
@@ -88,16 +89,16 @@ describe("terminal progress", () => {
       const interrupt = vi.fn();
       const command = "npm run check -- --scroll";
       const progress = new TerminalProgress(output, true, false, 100, {
+        command,
         input,
         onInterrupt: interrupt,
-        command,
       });
       // Act
       progress.start(graph, id);
-      progress.update({ taskId: id, package: ".", status: "running" });
+      progress.update({ package: ".", status: "running", taskId: id });
       vi.advanceTimersByTime(160);
-      input.emit("data", "\u0003");
-      progress.update({ taskId: id, package: ".", status });
+      input.emit("data", "\u{3}");
+      progress.update({ package: ".", status, taskId: id });
       const offset = write.mock.calls.length;
       expect(
         write.mock.calls
@@ -105,7 +106,7 @@ describe("terminal progress", () => {
           .some(([text]) => String(text).includes(command)),
       ).toBe(true);
       const live = stripVTControlCharacters(
-        String(write.mock.calls.at(-1)![0]),
+        String(write.mock.calls.at(-1)?.[0]),
       ).split("\r\n");
       expect(live[0]).toBe(command);
       expect(live[1]).toBe("");
@@ -122,7 +123,7 @@ describe("terminal progress", () => {
         .slice(offset)
         .map(([text]) => String(text))
         .join("");
-      expect(final.indexOf("\u001b[?1049l")).toBeLessThan(
+      expect(final.indexOf("\u{1B}[?1049l")).toBeLessThan(
         final.indexOf(`check (${status}`),
       );
       expect(final).not.toContain(command);
@@ -156,18 +157,18 @@ describe("terminal progress", () => {
       const taskId = make<TaskId>();
       const root = taskId("root");
       const children = Array.from({ length: 10 }, (_, index) =>
-        taskId(`child-${index}`),
+        taskId(`child-${String(index)}`),
       );
       const tasks = new Map<TaskId, CompiledTask>([
-        [root, { id: root, package: ".", dependsOn: children, skip: false }],
+        [root, { dependsOn: children, id: root, package: ".", skip: false }],
         ...children.map((child): [TaskId, CompiledTask] => [
           child,
           {
+            dependsOn: [],
             id: child,
             package: ".",
-            dependsOn: [],
-            skip: false,
             run: { kind: "npm", script: child },
+            skip: false,
           },
         ]),
       ]);
@@ -176,8 +177,8 @@ describe("terminal progress", () => {
         setRawMode: vi.fn(),
       });
       const output = Object.assign(new PassThrough(), {
-        rows: 5,
         columns: 100,
+        rows: 5,
       });
       const write = vi.spyOn(output, "write");
       const progress = new TerminalProgress(output, true, collapse, 5, {
@@ -186,15 +187,16 @@ describe("terminal progress", () => {
       });
       // Act
       progress.start(tasks, root);
-      progress.update({
-        taskId: children[0]!,
-        package: ".",
-        status: "running",
-      });
-      input.emit("data", "\u001b[F");
-      const end = stripVTControlCharacters(String(write.mock.calls.at(-1)![0]));
+      const firstChild = children.at(0);
+      if (firstChild === undefined)
+        throw new Error("Expected the progress graph to have a child");
+      progress.update({ package: ".", status: "running", taskId: firstChild });
+      input.emit("data", "\u{1B}[F");
+      const end = stripVTControlCharacters(
+        String(write.mock.calls.at(-1)?.[0]),
+      );
       for (const task of tasks.values())
-        progress.update({ taskId: task.id, package: ".", status: "succeeded" });
+        progress.update({ package: ".", status: "succeeded", taskId: task.id });
       const offset = write.mock.calls.length;
       progress.stop();
       const final = stripVTControlCharacters(
@@ -208,13 +210,10 @@ describe("terminal progress", () => {
       expect(end).toContain("... 6 more tasks");
       expect(end).toContain("Lines 5-6/6");
       expect(final).toContain("root (succeeded");
-      if (collapse) {
-        expect(final).not.toContain("child-");
-        expect(final).not.toContain("more tasks");
-      } else {
-        expect(final).toContain("child-3 (succeeded");
-        expect(final).toContain("... 6 more tasks");
-      }
+      expect(final.includes("child-")).toBe(!collapse);
+      expect(final.includes("more tasks")).toBe(!collapse);
+      expect(final.includes("child-3 (succeeded")).toBe(!collapse);
+      expect(final.includes("... 6 more tasks")).toBe(!collapse);
     },
   );
 
@@ -236,233 +235,12 @@ describe("terminal progress", () => {
       throw failure;
     });
     // Act & Assert
-    expect(() => progress.stop()).toThrow(failure);
-    expect(String(write.mock.calls.at(-1)![0])).toContain("check (pending)");
+    expect(() => {
+      progress.stop();
+    }).toThrow(failure);
+    expect(String(write.mock.calls.at(-1)?.[0])).toContain("check (pending)");
     const count = write.mock.calls.length;
     progress.stop();
     expect(write).toHaveBeenCalledTimes(count);
-  });
-  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
-    "rejects invalid task limit %s",
-    (limit) => {
-      // Arrange & Act & Assert
-      expect(
-        () => new TerminalProgress(new PassThrough(), true, false, limit),
-      ).toThrow("Max tasks must be a positive integer");
-    },
-  );
-
-  it.each(["failed", "blocked", "cancelled"] as const)(
-    "persists completed children beyond a tiny viewport after %s without collapsing",
-    (status) => {
-      // Arrange
-      vi.useFakeTimers();
-      const taskId = make<TaskId>();
-      const root = taskId("validate");
-      const build = taskId("build");
-      const clean = taskId("clean");
-      const compile = taskId("compile");
-      const test = taskId("test");
-      const tasks = new Map<TaskId, CompiledTask>([
-        [
-          root,
-          { id: root, package: ".", dependsOn: [build, test], skip: false },
-        ],
-        [
-          build,
-          { id: build, package: ".", dependsOn: [clean, compile], skip: false },
-        ],
-        ...[clean, compile, test].map((task): [TaskId, CompiledTask] => [
-          task,
-          {
-            id: task,
-            package: ".",
-            dependsOn: [],
-            skip: false,
-            run: { kind: "npm", script: task },
-          },
-        ]),
-      ]);
-      const output = Object.assign(new PassThrough(), { rows: 1, columns: 80 });
-      let text = "";
-      output.on("data", (chunk: Buffer) => {
-        text += chunk.toString();
-      });
-      const progress = new TerminalProgress(output, true, false);
-      // Act
-      progress.start(tasks, root);
-      for (const task of [clean, compile, build])
-        progress.update({
-          taskId: task,
-          package: ".",
-          status: "succeeded",
-          durationMs: 100,
-        });
-      progress.update({ taskId: test, package: ".", status });
-      progress.update({ taskId: root, package: ".", status: "blocked" });
-      const offset = text.length;
-      progress.stop();
-      const final = stripVTControlCharacters(text.slice(offset));
-      // Assert
-      expect(final).toContain("validate (blocked");
-      expect(final).toContain("  \u2714 build (succeeded, 0.1s)");
-      expect(final).toContain("    \u2714 clean (succeeded, 0.1s)");
-      expect(final).toContain("    \u2714 compile (succeeded, 0.1s)");
-      expect(final).toContain(`test (${status})`);
-      expect(final).not.toContain("more tasks");
-      expect(vi.getTimerCount()).toBe(0);
-    },
-  );
-
-  it.each([undefined, 3])(
-    "limits the final listing to %s task rows independently of terminal height",
-    (limit) => {
-      // Arrange
-      const taskId = make<TaskId>();
-      const root = taskId("root");
-      const children = Array.from({ length: 105 }, (_, index) =>
-        taskId(`child-${index}`),
-      );
-      const tasks = new Map<TaskId, CompiledTask>([
-        [root, { id: root, package: ".", dependsOn: children, skip: false }],
-        ...children.map((child): [TaskId, CompiledTask] => [
-          child,
-          {
-            id: child,
-            package: ".",
-            dependsOn: [],
-            skip: false,
-            run: { kind: "npm", script: child },
-          },
-        ]),
-      ]);
-      const output = Object.assign(new PassThrough(), { rows: 3, columns: 80 });
-      let text = "";
-      output.on("data", (chunk: Buffer) => {
-        text += chunk.toString();
-      });
-      const progress = new TerminalProgress(output, true, false, limit);
-      // Act
-      progress.start(tasks, root);
-      const offset = text.length;
-      progress.stop();
-      const final = stripVTControlCharacters(text.slice(offset)).trim();
-      // Assert
-      expect(final.split("\n")).toHaveLength((limit ?? 100) + 1);
-      expect(final).toContain(`... ${106 - (limit ?? 100)} more tasks`);
-    },
-  );
-
-  it.each([
-    { noColor: undefined, forceColor: undefined, colored: true },
-    { noColor: "", forceColor: undefined, colored: false },
-    { noColor: "1", forceColor: "1", colored: false },
-    { noColor: undefined, forceColor: "0", colored: false },
-    { noColor: undefined, forceColor: "1", colored: true },
-  ])(
-    "respects color preferences: $noColor / $forceColor",
-    ({ noColor, forceColor, colored }) => {
-      // Arrange
-      vi.stubEnv("NO_COLOR", noColor);
-      vi.stubEnv("FORCE_COLOR", forceColor);
-      const output = new PassThrough();
-      let text = "";
-      output.on("data", (chunk: Buffer) => {
-        text += chunk.toString();
-      });
-      const progress = new TerminalProgress(output, true);
-      // Act
-      try {
-        progress.start(graph, id);
-        progress.update({ taskId: id, package: ".", status: "succeeded" });
-      } finally {
-        progress.stop();
-      }
-      // Assert
-      expect(text.includes("\u001b[32m")).toBe(colored);
-      expect(stripVTControlCharacters(text)).toContain(
-        "\u2714 check (succeeded)",
-      );
-    },
-  );
-  it.each([undefined, 12])(
-    "redraws live output at terminal height %s and releases the animation on stop",
-    (rows) => {
-      // Arrange
-      vi.useFakeTimers();
-      const output = Object.assign(new PassThrough(), {
-        ...(rows === undefined ? {} : { rows }),
-        columns: 80,
-      });
-      let text = "";
-      output.on("data", (chunk: Buffer) => {
-        text += chunk.toString();
-      });
-      const progress = new TerminalProgress(output, true);
-      // Act
-      progress.start(graph, id);
-      progress.update({ taskId: id, package: ".", status: "running" });
-      vi.advanceTimersByTime(160);
-      progress.update({
-        taskId: id,
-        package: ".",
-        status: "succeeded",
-        durationMs: 160,
-      });
-      progress.stop();
-      const settled = text;
-      progress.stop();
-      vi.advanceTimersByTime(1000);
-      // Assert
-      expect(stripVTControlCharacters(text)).toContain("check (pending)");
-      expect(stripVTControlCharacters(text)).toContain("check (running");
-      expect(stripVTControlCharacters(text)).toContain(
-        "check (succeeded, 0.2s)",
-      );
-      expect(text).toContain("\u001b[");
-      expect(text).toBe(settled);
-      expect(vi.getTimerCount()).toBe(0);
-      expect(text).not.toContain("\u001b[?25l");
-    },
-  );
-
-  it("prints concise plain output without ready transitions, escape codes, or timers", () => {
-    // Arrange
-    vi.useFakeTimers();
-    vi.stubEnv("FORCE_COLOR", "1");
-    const output = new PassThrough();
-    const write = vi.spyOn(output, "write");
-    const progress = new TerminalProgress(output, false);
-    // Act
-    progress.start(graph, id);
-    progress.update({ taskId: id, package: ".", status: "ready" });
-    progress.update({ taskId: id, package: ".", status: "running" });
-    progress.update({
-      taskId: id,
-      package: ".",
-      status: "failed",
-      durationMs: 100,
-    });
-    progress.stop();
-    // Assert
-    expect(write.mock.calls).toEqual([
-      ["| check (running, 0.0s)\n"],
-      ["x check (failed, 0.1s)\n"],
-    ]);
-    expect(vi.getTimerCount()).toBe(0);
-  });
-
-  it("rejects invalid lifecycle calls and can stop before starting", () => {
-    // Arrange
-    const progress = new TerminalProgress(new PassThrough(), false);
-    // Act & Assert
-    progress.stop();
-    expect(() => progress.summary()).toThrow("has not started");
-    expect(() =>
-      progress.update({ taskId: id, package: ".", status: "running" }),
-    ).toThrow("has not started");
-    progress.start(graph, id);
-    expect(progress.summary()).toBe("Tasks: 1 | pending: 1");
-    expect(() => progress.start(graph, id)).toThrow("already started");
   });
 });

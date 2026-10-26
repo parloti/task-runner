@@ -1,5 +1,11 @@
-import type { CompiledTask } from "./types.js";
+import type { CompiledTask } from "./types";
 
+/**
+ * Return the readable display name for a compiled task.
+ * @param task Task whose command or configured ID provides the name.
+ * @returns The task label without its package prefix.
+ * @example `taskName(task)` returns an npm script name when the task runs npm.
+ */
 export function taskName(task: CompiledTask): string {
   if (task.run?.kind === "npm") return task.run.script;
   const prefix = `${task.package}#`;

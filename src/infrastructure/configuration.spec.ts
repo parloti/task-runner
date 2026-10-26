@@ -1,29 +1,30 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
-import path from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+
 import {
   findConfiguration,
   findPackage,
   loadScripts,
   parseConfiguration,
-} from "./configuration.js";
+} from "./configuration";
 
 const valid = () => ({
+  packages: { ".": { check: { run: { command: "echo hi", kind: "shell" } } } },
   version: 2,
-  packages: { ".": { check: { run: { kind: "shell", command: "echo hi" } } } },
 });
 const withTask = (task: unknown) => ({
-  version: 2,
   packages: { ".": { check: task } },
+  version: 2,
 });
 
 describe("configuration boundary", () => {
   it("selects the nearest containing package, including nested directories", () => {
     // Arrange
     const config = parseConfiguration({
-      version: 2,
       packages: { ".": {}, "apps/web": {} },
+      version: 2,
     });
     const root = path.resolve("fixture");
     // Act & Assert
@@ -53,48 +54,48 @@ describe("configuration boundary", () => {
   });
 
   it.each([
-    { value: null, error: "Expected object" },
-    { value: [], error: "Expected object" },
-    { value: { ...valid(), version: 1 }, error: "Unsupported" },
-    { value: { ...valid(), tasks: {} }, error: 'Unknown property "tasks"' },
+    { error: "Expected object", value: JSON.parse("null") as unknown },
+    { error: "Expected object", value: [] },
+    { error: "Unsupported", value: { ...valid(), version: 1 } },
+    { error: 'Unknown property "tasks"', value: { ...valid(), tasks: {} } },
     ...["../escape", "/absolute", "C:\\absolute", "a//b", "./a", "a#b"].map(
       (name) => ({
-        value: { version: 2, packages: { [name]: {} } },
         error: "Invalid relative",
+        value: { packages: { [name]: {} }, version: 2 },
       }),
     ),
     {
-      value: { version: 2, packages: { ".": { tasks: { build: {} } } } },
       error: 'Unknown property "build" in task tasks',
+      value: { packages: { ".": { tasks: { build: {} } } }, version: 2 },
     },
     {
-      value: { version: 2, packages: { ".": { entrypoints: { a: "b" } } } },
       error: 'Unknown property "a" in task entrypoints',
+      value: { packages: { ".": { entrypoints: { a: "b" } } }, version: 2 },
     },
     {
-      value: { version: 2, packages: { ".": { " ": {} } } },
       error: "Invalid local task name",
+      value: { packages: { ".": { " ": {} } }, version: 2 },
     },
-    { value: withTask({ package: "." }), error: 'Unknown property "package"' },
-    { value: withTask({ dependsOn: 1 }), error: "string array" },
-    { value: withTask({ dependsOn: [""] }), error: "Invalid local task name" },
-    { value: withTask({ dependsOn: ["#task"] }), error: "Missing package" },
-    { value: withTask({ run: { kind: "unknown" } }), error: "Command kind" },
+    { error: 'Unknown property "package"', value: withTask({ package: "." }) },
+    { error: "string array", value: withTask({ dependsOn: 1 }) },
+    { error: "Invalid local task name", value: withTask({ dependsOn: [""] }) },
+    { error: "Missing package", value: withTask({ dependsOn: ["#task"] }) },
+    { error: "Command kind", value: withTask({ run: { kind: "unknown" } }) },
     {
-      value: withTask({
-        run: { kind: "npm", script: "test", optional: "yes" },
-      }),
       error: "boolean",
+      value: withTask({
+        run: { kind: "npm", optional: "yes", script: "test" },
+      }),
     },
     {
-      value: withTask({ run: { kind: "npm", script: "test", args: [1] } }),
       error: "Expected string:",
+      value: withTask({ run: { args: [1], kind: "npm", script: "test" } }),
     },
     {
-      value: withTask({ run: { kind: "npm", script: "" } }),
       error: "non-empty",
+      value: withTask({ run: { kind: "npm", script: "" } }),
     },
-  ])("rejects malformed config: $error", ({ value, error }) => {
+  ])("rejects malformed config: $error", ({ error, value }) => {
     // Arrange & Act & Assert
     expect(() => parseConfiguration(value)).toThrow(error);
   });
@@ -102,22 +103,22 @@ describe("configuration boundary", () => {
   it("parses package-local tasks, qualified dependencies, commands and options", () => {
     // Arrange
     const input = {
-      version: 2,
       packages: {
         ".": {
           check: {
             dependsOn: ["apps/web#group"],
             run: {
-              kind: "npm",
-              script: "check",
               args: ["--fix"],
+              kind: "npm",
               optional: false,
+              script: "check",
             },
           },
           plain: { run: { kind: "npm", script: "check" } },
         },
         "apps/web": { group: { dependsOn: [".#plain"] } },
       },
+      version: 2,
     };
     // Act & Assert
     expect(parseConfiguration(input)).toEqual(input);
@@ -127,7 +128,7 @@ describe("configuration boundary", () => {
     // Arrange & Act
     const parsed = parseConfiguration(withTask({ dependsOn: [] }));
     // Assert
-    expect(parsed.packages["."]!["check"]).toEqual({});
+    expect(parsed.packages["."]?.["check"]).toEqual({});
   });
 
   it("discovers parent configuration or honors explicit paths, and fails clearly when absent", () => {
@@ -147,7 +148,7 @@ describe("configuration boundary", () => {
         "No task-runner.json",
       );
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { force: true, recursive: true });
     }
   });
 
@@ -157,8 +158,8 @@ describe("configuration boundary", () => {
     const manifest = path.join(directory, "package.json");
     mkdirSync(path.join(directory, "pkg"));
     const config = parseConfiguration({
-      version: 2,
       packages: { ".": {}, pkg: {} },
+      version: 2,
     });
     try {
       // Act & Assert
@@ -173,7 +174,7 @@ describe("configuration boundary", () => {
       writeFileSync(manifest, '{"scripts":{"bad":7}}');
       expect(() => loadScripts(config, directory)).toThrow("Expected string");
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { force: true, recursive: true });
     }
   });
 });

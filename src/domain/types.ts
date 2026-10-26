@@ -1,61 +1,61 @@
 import type { Brand } from "ts-brand";
 
-export type TaskId = Brand<string, "task-runner/TaskId">;
-
 export type Command =
   | {
-      readonly kind: "npm";
-      readonly script: string;
       readonly args?: readonly string[];
+      readonly kind: "npm";
       readonly optional?: boolean;
+      readonly script: string;
     }
-  | { readonly kind: "shell"; readonly command: string };
-
-export interface TaskDefinition {
-  readonly dependsOn?: readonly string[];
-  readonly run?: Command;
-}
-
-export interface RunnerConfig {
-  readonly version: 2;
-  readonly packages: Readonly<
-    Record<string, Readonly<Record<string, TaskDefinition>>>
-  >;
-}
+  | { readonly command: string; readonly kind: "shell" };
 
 export interface CompiledTask {
+  readonly dependsOn: readonly TaskId[];
   readonly id: TaskId;
   readonly package: string;
-  readonly dependsOn: readonly TaskId[];
   readonly run?: Command;
   readonly skip: boolean;
-}
-
-export type TaskStatus =
-  | "pending"
-  | "ready"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "skipped"
-  | "blocked"
-  | "cancelled";
-
-export interface TaskEvent {
-  readonly taskId: TaskId;
-  readonly package: string;
-  readonly status: TaskStatus;
-  readonly durationMs?: number;
-  readonly error?: Error;
-}
-
-export interface RunResult {
-  readonly success: boolean;
-  readonly states: ReadonlyMap<TaskId, TaskStatus>;
-  readonly errors: readonly unknown[];
 }
 
 export type ExecuteCommand = (
   task: CompiledTask,
   signal: AbortSignal,
 ) => Promise<void>;
+
+export interface RunnerConfig {
+  readonly packages: Readonly<
+    Record<string, Readonly<Record<string, TaskDefinition>>>
+  >;
+  readonly version: 2;
+}
+
+export interface RunResult {
+  readonly errors: readonly unknown[];
+  readonly states: ReadonlyMap<TaskId, TaskStatus>;
+  readonly success: boolean;
+}
+
+export interface TaskDefinition {
+  readonly dependsOn?: readonly string[];
+  readonly run?: Command;
+}
+
+export interface TaskEvent {
+  readonly durationMs?: number;
+  readonly error?: Error;
+  readonly package: string;
+  readonly status: TaskStatus;
+  readonly taskId: TaskId;
+}
+
+export type TaskId = Brand<string, "task-runner/TaskId">;
+
+export type TaskStatus =
+  | "blocked"
+  | "cancelled"
+  | "failed"
+  | "pending"
+  | "ready"
+  | "running"
+  | "skipped"
+  | "succeeded";

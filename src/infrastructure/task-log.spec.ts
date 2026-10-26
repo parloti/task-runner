@@ -1,15 +1,17 @@
 import path from "node:path";
 import { make } from "ts-brand";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CompiledTask, TaskId } from "../domain/types.js";
-import { taskLogPath } from "./task-log.js";
+
+import type { CompiledTask, TaskId } from "../domain";
+
+import { taskLogPath } from "./task-log";
 
 const task: CompiledTask = {
+  dependsOn: [],
   id: make<TaskId>()("apps/automation#validation:test"),
   package: "apps/automation",
-  dependsOn: [],
-  skip: false,
   run: { kind: "npm", script: "test" },
+  skip: false,
 };
 
 afterEach(() => vi.restoreAllMocks());
@@ -38,20 +40,20 @@ describe("task output paths", () => {
   });
 
   it.each([
-    { name: '../../a\\b:*?"<>|\u001b[2J\n', expected: "a-b-" },
-    { name: "...", expected: "task-" },
-    { name: "CON", expected: "CON-" },
-    { name: "\u754c".repeat(150), expected: "task-" },
-    { name: "a".repeat(250), expected: "a".repeat(120) + "-" },
+    { expected: "a-b-", name: '../../a\\b:*?"<>|\u{1B}[2J\n' },
+    { expected: "task-", name: "..." },
+    { expected: "CON-", name: "CON" },
+    { expected: "task-", name: "\u{754C}".repeat(150) },
+    { expected: "a".repeat(120) + "-", name: "a".repeat(250) },
   ])(
     "normalizes unsafe or oversized root task names: $expected",
-    ({ name, expected }) => {
+    ({ expected, name }) => {
       // Arrange
       const definition: CompiledTask = {
         ...task,
-        package: ".",
         id: make<TaskId>()(name),
-        run: { kind: "shell", command: "unused" },
+        package: ".",
+        run: { command: "unused", kind: "shell" },
       };
       // Act
       const log = taskLogPath("logs", definition);

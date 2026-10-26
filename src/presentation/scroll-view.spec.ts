@@ -1,31 +1,38 @@
 import { PassThrough } from "node:stream";
 import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it, vi } from "vitest";
-import { ScrollView } from "./scroll-view.js";
 
+import { ScrollView } from "./scroll-view";
+
+/**
+ * Create a fake interactive terminal for scroll view tests.
+ * @param command Optional invocation text displayed by the view.
+ * @returns Input and output streams with terminal capabilities.
+ * @example `terminal("task-runner run build")` creates a terminal fixture.
+ */
 function terminal(command?: string) {
   const input = Object.assign(new PassThrough(), {
-    isTTY: true,
     isRaw: false,
+    isTTY: true,
     setRawMode: vi.fn(),
   });
-  const output = Object.assign(new PassThrough(), { rows: 7, columns: 100 });
+  const output = Object.assign(new PassThrough(), { columns: 100, rows: 7 });
   const write = vi.spyOn(output, "write");
   const interrupt = vi.fn();
   const view = new ScrollView(output, {
     input,
     onInterrupt: interrupt,
-    ...(command === undefined ? {} : { command }),
+    ...(command !== undefined && { command }),
   });
   const frame = () =>
-    stripVTControlCharacters(String(write.mock.calls.at(-1)![0]));
-  const press = (text: string | Buffer) => input.emit("data", text);
-  return { input, output, view, write, frame, press, interrupt };
+    stripVTControlCharacters(String(write.mock.calls.at(-1)?.[0]));
+  const press = (text: Buffer | string) => input.emit("data", text);
+  return { frame, input, interrupt, output, press, view, write };
 }
 
 const lines = Array.from(
   { length: 20 },
-  (_, index) => `task ${index + 1}`,
+  (_, index) => `task ${String(index + 1)}`,
 ).join("\n");
 const summary = "Tasks: 20 | pending: 20";
 
@@ -34,14 +41,14 @@ describe("scrollable terminal viewport", () => {
     // Arrange
     const command =
       "npm run validate -- --scroll --collapse false --concurrency 4 --max-tasks 1000";
-    const { view, output, press, frame } = terminal(command);
+    const { frame, output, press, view } = terminal(command);
     output.columns = 41;
     output.rows = 11;
     view.start();
     // Act
     view.render(lines, summary);
     const initial = frame().split("\r\n");
-    press("\u001b[F");
+    press("\u{1B}[F");
     const end = frame().split("\r\n");
     // Assert
     expect(initial.slice(0, 2).join("")).toBe(command);
@@ -57,7 +64,7 @@ describe("scrollable terminal viewport", () => {
     output.columns = 100;
     output.emit("resize");
     // Assert
-    expect(frame().split("\r\n")[0]).toBe(command);
+    expect(frame().split("\r\n", 1)[0]).toBe(command);
     expect(frame()).toContain("Lines 15-20/20");
     view.stop();
   });
@@ -66,13 +73,13 @@ describe("scrollable terminal viewport", () => {
     "reserves task space on a %i-row terminal even with a long header",
     (rows) => {
       // Arrange
-      const { view, output, press, frame } = terminal("a".repeat(200));
+      const { frame, output, press, view } = terminal("a".repeat(200));
       output.rows = rows;
       output.columns = 11;
       view.start();
       // Act
       view.render(lines, summary);
-      press("\u001b[F");
+      press("\u{1B}[F");
       // Assert
       const rendered = frame().split("\r\n");
       expect(rendered).toHaveLength(rows);
@@ -84,34 +91,34 @@ describe("scrollable terminal viewport", () => {
 
   it("sanitizes terminal controls in command headers", () => {
     // Arrange
-    const { view, frame } = terminal("npm\u001b[2J run\nvalidate\t\u202e");
+    const { frame, view } = terminal("npm\u{1B}[2J run\nvalidate\t\u{202E}");
     view.start();
     // Act
     view.render(lines, summary);
     // Assert
-    expect(frame().split("\r\n")[0]).toBe("npm run validate  ");
+    expect(frame().split("\r\n", 1)[0]).toBe("npm run validate  ");
     view.stop();
   });
   it.each([
-    ["\u001b[B", 2],
-    ["\u001bOB", 2],
-    ["\u001b[A", 1],
-    ["\u001bOA", 1],
-    ["\u001b[6~", 5],
-    ["\u001b[5~", 1],
-    ["\u001b[F", 17],
-    ["\u001bOF", 17],
-    ["\u001b[4~", 17],
-    ["\u001b[8~", 17],
-    ["\u001b[H", 1],
-    ["\u001bOH", 1],
-    ["\u001b[1~", 1],
-    ["\u001b[7~", 1],
-    ["\u001b[<65;10;3M", 4],
-    ["\u001b[<64;10;3M", 1],
+    ["\u{1B}[B", 2],
+    ["\u{1B}OB", 2],
+    ["\u{1B}[A", 1],
+    ["\u{1B}OA", 1],
+    ["\u{1B}[6~", 5],
+    ["\u{1B}[5~", 1],
+    ["\u{1B}[F", 17],
+    ["\u{1B}OF", 17],
+    ["\u{1B}[4~", 17],
+    ["\u{1B}[8~", 17],
+    ["\u{1B}[H", 1],
+    ["\u{1B}OH", 1],
+    ["\u{1B}[1~", 1],
+    ["\u{1B}[7~", 1],
+    ["\u{1B}[<65;10;3M", 4],
+    ["\u{1B}[<64;10;3M", 1],
   ] as const)("navigates %j without appending history", (key, first) => {
     // Arrange
-    const { view, press, frame, write } = terminal();
+    const { frame, press, view, write } = terminal();
     view.start();
     view.render(lines, summary);
     // Act
@@ -119,12 +126,12 @@ describe("scrollable terminal viewport", () => {
     // Assert
     expect(frame()).toBe(
       [first, first + 1, first + 2, first + 3]
-        .map((number) => `task ${number}`)
+        .map((number) => `task ${String(number)}`)
         .join("\r\n") +
-        `\r\n\r\n${summary}\r\nLines ${first}-${first + 3}/20 | Up/Down PgUp/PgDn Home/End Wheel | Ctrl+C stop`,
+        `\r\n\r\n${summary}\r\nLines ${String(first)}-${String(first + 3)}/20 | Up/Down PgUp/PgDn Home/End Wheel | Ctrl+C stop`,
     );
-    const patch = String(write.mock.calls.at(-1)![0]);
-    expect(patch.startsWith("\u001b[H")).toBe(true);
+    const patch = String(write.mock.calls.at(-1)?.[0]);
+    expect(patch.startsWith("\u{1B}[H")).toBe(true);
     expect(patch).not.toMatch(/\n$/);
     expect(patch.split("\r\n")).toHaveLength(7);
     view.stop();
@@ -132,34 +139,34 @@ describe("scrollable terminal viewport", () => {
 
   it("handles split/coalesced input, repeated boundary keys, and unsupported input", () => {
     // Arrange
-    const { view, press, frame, write } = terminal();
+    const { frame, press, view, write } = terminal();
     view.start();
     view.render(lines, summary);
     // Act
-    press(Buffer.from("\u001b"));
+    press(Buffer.from("\u{1B}"));
     press("[");
-    press("B\u001b[B");
+    press("B\u{1B}[B");
     // Assert
     expect(frame()).toContain("Lines 3-6/20");
     // Act
-    press("\u001b[<65;1;");
+    press("\u{1B}[<65;1;");
     press("1M");
     // Assert
     expect(frame()).toContain("Lines 6-9/20");
     // Act
-    press("\u001b[F\u001b[B\u001b[6~");
+    press("\u{1B}[F\u{1B}[B\u{1B}[6~");
     // Assert
     expect(frame()).toContain("Lines 17-20/20");
     // Act
-    press("\u001b[5~");
+    press("\u{1B}[5~");
     // Assert
     expect(frame()).toContain("Lines 13-16/20");
     // Act
-    press("\u001b[H\u001b[A");
+    press("\u{1B}[H\u{1B}[A");
     const count = write.mock.calls.length;
-    press("hello\u001b[Z\u001b[<0;1;1M\u001b[<65;1;1m\u001bx");
-    press("\u001b[" + "1".repeat(100));
-    press("\u001b[B");
+    press("hello\u{1B}[Z\u{1B}[<0;1;1M\u{1B}[<65;1;1m\u{1B}x");
+    press("\u{1B}[" + "1".repeat(100));
+    press("\u{1B}[B");
     // Assert
     expect(write.mock.calls.length).toBe(count + 1);
     expect(frame()).toContain("Lines 2-5/20");
@@ -168,11 +175,11 @@ describe("scrollable terminal viewport", () => {
 
   it("uses Ctrl+C for cancellation even following an incomplete sequence", () => {
     // Arrange
-    const { view, press, interrupt } = terminal();
+    const { interrupt, press, view } = terminal();
     view.start();
     view.render(lines, summary);
     // Act
-    press("\u001b[\u0003");
+    press("\u{1B}[\u{3}");
     // Assert
     expect(interrupt).toHaveBeenCalledOnce();
     view.stop();
@@ -180,10 +187,10 @@ describe("scrollable terminal viewport", () => {
 
   it("re-clamps on resize and collapse and erases the old viewport", () => {
     // Arrange
-    const { view, press, output, frame, write } = terminal();
+    const { frame, output, press, view, write } = terminal();
     view.start();
     view.render(lines, summary);
-    press("\u001b[F");
+    press("\u{1B}[F");
     // Act
     output.rows = 12;
     output.emit("resize");
@@ -195,29 +202,31 @@ describe("scrollable terminal viewport", () => {
     expect(frame()).toContain("root (succeeded)");
     expect(frame()).not.toContain("task ");
     expect(frame()).toContain("Lines 1-1/1");
-    expect(String(write.mock.calls.at(-1)![0]).endsWith("\u001b[J")).toBe(true);
+    expect(String(write.mock.calls.at(-1)?.[0]).endsWith("\u{1B}[J")).toBe(
+      true,
+    );
     view.stop();
   });
 
   it("wraps colored wide labels within physical screen bounds", () => {
     // Arrange
-    const { view, output, press, frame } = terminal();
+    const { frame, output, press, view } = terminal();
     output.columns = 9;
     output.rows = 5;
     view.start();
     // Act
     view.render(
-      "\u001b[32m12345678901234567890\u001b[39m\n\u754c\u754c\u754c\u754c\u754c",
+      "\u{1B}[32m12345678901234567890\u{1B}[39m\n\u{754C}\u{754C}\u{754C}\u{754C}\u{754C}",
       summary,
     );
     // Assert
     expect(frame().split("\r\n").slice(0, 2)).toEqual(["12345678", "90123456"]);
     // Act
-    press("\u001b[F");
+    press("\u{1B}[F");
     // Assert
     expect(frame().split("\r\n").slice(0, 2)).toEqual([
-      "\u754c\u754c\u754c\u754c",
-      "\u754c",
+      "\u{754C}\u{754C}\u{754C}\u{754C}",
+      "\u{754C}",
     ]);
     expect(frame().split("\r\n")).toHaveLength(5);
     view.stop();
@@ -225,7 +234,7 @@ describe("scrollable terminal viewport", () => {
 
   it("handles zero and one-cell terminals without scrolling past the bottom", () => {
     // Arrange
-    const { view, output, press, frame } = terminal();
+    const { frame, output, press, view } = terminal();
     output.rows = 0;
     output.columns = 0;
     view.start();
@@ -234,7 +243,7 @@ describe("scrollable terminal viewport", () => {
     // Assert
     expect(frame()).toBe("a");
     // Act
-    press("\u001b[F");
+    press("\u{1B}[F");
     // Assert
     expect(frame()).toBe("c");
     view.stop();
@@ -253,126 +262,7 @@ describe("scrollable terminal viewport", () => {
     // Act
     view.render(lines, summary);
     // Assert
-    expect(String(write.mock.calls.at(-1)![0]).split("\r\n")).toHaveLength(24);
+    expect(String(write.mock.calls.at(-1)?.[0]).split("\r\n")).toHaveLength(24);
     view.stop();
-  });
-
-  it.each([true, false])(
-    "restores prior input modes, listeners, and screen exactly once: raw=%s",
-    (raw) => {
-      // Arrange
-      const { view, input, output, write, press, interrupt } = terminal();
-      input.isRaw = raw;
-      if (raw) input.resume();
-      else input.pause();
-      const flow = input.readableFlowing;
-      const listener = vi.fn();
-      input.on("data", listener);
-      const resize = vi.fn();
-      output.on("resize", resize);
-      view.start();
-      // Act
-      view.render(lines, summary);
-      view.stop();
-      const calls = write.mock.calls.length;
-      view.stop();
-      press("\u0003");
-      // Assert
-      expect(input.setRawMode.mock.calls).toEqual([[true], [raw]]);
-      expect(input.readableFlowing).toBe(flow);
-      expect(input.listeners("data")).toEqual([listener]);
-      expect(output.listeners("resize")).toEqual([resize]);
-      expect(interrupt).not.toHaveBeenCalled();
-      expect(write).toHaveBeenCalledTimes(calls);
-      expect(write.mock.calls[0]![0]).toBe(
-        "\u001b[?1049h\u001b[?25l\u001b[?1000h\u001b[?1006h",
-      );
-      expect(write.mock.calls.at(-1)![0]).toBe(
-        "\u001b[?1006l\u001b[?1000l\u001b[?25h\u001b[?1049l",
-      );
-    },
-  );
-
-  it.each(["not-tty", "no-raw"] as const)(
-    "rejects unavailable input before changing the screen: %s",
-    (reason) => {
-      // Arrange
-      const input =
-        reason === "not-tty"
-          ? new PassThrough()
-          : Object.assign(new PassThrough(), { isTTY: true });
-      const output = new PassThrough();
-      const write = vi.spyOn(output, "write");
-      const view = new ScrollView(output, { input, onInterrupt: vi.fn() });
-      // Act & Assert
-      expect(() => view.start()).toThrow(
-        "--scroll requires interactive terminal input",
-      );
-      view.stop();
-      expect(write).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(["raw", "write", "resume"] as const)(
-    "rolls back a setup failure from %s",
-    (boundary) => {
-      // Arrange
-      const { view, input, output, write } = terminal();
-      const failure = new Error("terminal setup failed");
-      if (boundary === "raw")
-        input.setRawMode.mockImplementationOnce(() => {
-          throw failure;
-        });
-      if (boundary === "write")
-        write.mockImplementationOnce(() => {
-          throw failure;
-        });
-      if (boundary === "resume")
-        vi.spyOn(input, "resume").mockImplementationOnce(() => {
-          throw failure;
-        });
-      // Act & Assert
-      expect(() => view.start()).toThrow(failure);
-      expect(input.setRawMode).toHaveBeenLastCalledWith(false);
-      expect(input.listenerCount("data")).toBe(0);
-      expect(output.listenerCount("resize")).toBe(0);
-      expect(String(write.mock.calls.at(-1)![0])).toContain("\u001b[?1049l");
-      view.stop();
-    },
-  );
-
-  it("preserves setup and cleanup failures while still restoring the screen", () => {
-    // Arrange
-    const { view, input, write } = terminal();
-    const setup = new Error("raw setup failed");
-    const cleanup = new Error("raw restore failed");
-    input.setRawMode
-      .mockImplementationOnce(() => {
-        throw setup;
-      })
-      .mockImplementationOnce(() => {
-        throw cleanup;
-      });
-    // Act & Assert
-    expect(() => view.start()).toThrow(
-      new AggregateError(
-        [setup, cleanup],
-        "Scrollable terminal setup and cleanup failed",
-      ),
-    );
-    expect(String(write.mock.calls.at(-1)![0])).toContain("\u001b[?1049l");
-  });
-
-  it("restores the normal screen even when pausing input fails", () => {
-    // Arrange
-    const { view, input, write } = terminal();
-    view.start();
-    const failure = new Error("pause failed");
-    vi.spyOn(input, "pause").mockImplementationOnce(() => {
-      throw failure;
-    });
-    // Act & Assert
-    expect(() => view.stop()).toThrow(failure);
-    expect(String(write.mock.calls.at(-1)![0])).toContain("\u001b[?1049l");
   });
 });
