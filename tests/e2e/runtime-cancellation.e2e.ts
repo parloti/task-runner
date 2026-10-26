@@ -91,6 +91,7 @@ describe("real runtime", () => {
       },
     });
     try {
+      vi.stubEnv("CI", "");
       const logRoot = path.join(directory, "logs", "task-runner");
       mkdirSync(logRoot, { recursive: true });
       writeFileSync(path.join(logRoot, "old.log"), "stale output");
@@ -118,6 +119,7 @@ describe("real runtime", () => {
         expect(readFileSync(path.join(logRoot, log), "utf8")).toContain("err");
       }
     } finally {
+      vi.unstubAllEnvs();
       rmSync(directory, { force: true, recursive: true });
     }
   });
