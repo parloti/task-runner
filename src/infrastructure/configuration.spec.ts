@@ -58,6 +58,10 @@ describe("configuration boundary", () => {
     { error: "Expected object", value: [] },
     { error: "Unsupported", value: { ...valid(), version: 1 } },
     { error: 'Unknown property "tasks"', value: { ...valid(), tasks: {} } },
+    {
+      error: "Expected string: configuration $comment",
+      value: { ...valid(), $comment: 42 },
+    },
     ...["../escape", "/absolute", "C:\\absolute", "a//b", "./a", "a#b"].map(
       (name) => ({
         error: "Invalid relative",
