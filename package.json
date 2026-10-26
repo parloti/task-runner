@@ -33,7 +33,7 @@
   },
   "scripts": {
     "\n# ---------------- GENERAL  ---------------- #": "",
-    "prepare": "husky && node scripts/install-task-runner-shim.ts",
+    "prepare": "patch-package && husky && node scripts/install-task-runner-shim.ts",
     "\n# ------------------ SCM  ------------------ #": "",
     "commit": "npx --yes git-cz",
     "\n# ---------------- BUILDING ---------------- #": "",

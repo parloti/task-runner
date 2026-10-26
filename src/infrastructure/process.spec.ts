@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CompiledTask, TaskId } from "../domain";
 
+import { mockSpawn, registerProcessTerminationTests } from "./__tests__";
 import { createProcessExecutor } from "./process";
 
 const task: CompiledTask = {
@@ -18,14 +19,12 @@ const task: CompiledTask = {
 };
 vi.mock(import("node:child_process"), async (importOriginal) => {
   const actual = { ...(await importOriginal()) };
-  return { ...actual, spawn: vi.fn().mockImplementation(actual.spawn) };
+  return { ...actual, spawn: vi.fn() };
 });
-beforeEach(async () => {
-  const actual =
-    await vi.importActual<typeof import("node:child_process")>(
-      "node:child_process",
-    );
-  vi.mocked(spawn).mockImplementation(actual.spawn);
+beforeEach(() => {
+  vi.mocked(spawn).mockImplementation((file, args, options) =>
+    mockSpawn(file, args, options),
+  );
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -88,15 +87,33 @@ describe("process boundary", () => {
     vi.mocked(spawn).mockReturnValueOnce(child);
     const executor = createProcessExecutor(directory, directory, false);
     queueMicrotask(() => child.emit("close", 0));
+    const argsTask: CompiledTask = {
+      ...npmTask,
+      run: { args: ["--watch"], kind: "npm", script: "check" },
+    };
     try {
       await executor(npmTask, new AbortController().signal);
+      await executor(argsTask, new AbortController().signal);
       // Assert
-      expect(spawn).toHaveBeenCalledWith(
+      expect(spawn).toHaveBeenNthCalledWith(
+        1,
         process.execPath,
         expect.arrayContaining([
           expect.stringMatching(/npm-cli\.js$/),
           "run",
           "check",
+        ]),
+        expect.any(Object),
+      );
+      expect(spawn).toHaveBeenNthCalledWith(
+        2,
+        process.execPath,
+        expect.arrayContaining([
+          expect.stringMatching(/npm-cli\.js$/),
+          "run",
+          "check",
+          "--",
+          "--watch",
         ]),
         expect.any(Object),
       );
@@ -134,6 +151,17 @@ describe("process boundary", () => {
     async (ci) => {
       const directory = mkdtempSync(path.join(os.tmpdir(), "runner-process-"));
       const executor = createProcessExecutor(directory, directory, ci);
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const child = new ChildProcess();
+        const error = Object.assign(new Error("spawn node ENOENT"), {
+          code: "ENOENT",
+        });
+        queueMicrotask(() => {
+          child.emit("error", error);
+          child.emit("close", -2);
+        });
+        return child;
+      });
       try {
         // Act & Assert
         await expect(
@@ -165,6 +193,18 @@ describe("process boundary", () => {
           new AbortController().signal,
         ),
       ).rejects.toThrow("Command failed (2)");
+      expect(spawn).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("setTimeout"),
+        [],
+        expect.objectContaining({ shell: true, windowsHide: true }),
+      );
+      expect(spawn).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("process.exitCode=2"),
+        [],
+        expect.objectContaining({ shell: true, windowsHide: true }),
+      );
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }
@@ -189,13 +229,10 @@ describe("process boundary", () => {
 
   it("reports owned-tree termination failures instead of hiding them", async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), "runner-process-"));
-    vi.stubGlobal("process", { ...process, platform: "win32" });
-    const { spawn: normal } =
-      await vi.importActual<typeof import("node:child_process")>(
-        "node:child_process",
-      );
+    const kill = vi.fn(() => true);
+    vi.stubGlobal("process", { ...process, kill, platform: "win32" });
     vi.mocked(spawn).mockImplementation((file, args, options) => {
-      if (file !== "taskkill") return normal(file, args, options);
+      if (file !== "taskkill") return mockSpawn(file, args, options, 12_345);
       const killer = new ChildProcess();
       queueMicrotask(() => killer.emit("close", 1));
       return killer;
@@ -207,46 +244,11 @@ describe("process boundary", () => {
       controller.abort(new Error("cancel"));
       // Assert
       await expect(execution).rejects.toThrow("Task and cleanup failed");
+      expect(kill).toHaveBeenCalledWith(12_345, 0);
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }
   });
-
-  it.each(["ESRCH", "EPERM"])(
-    "checks OS process existence after a failed taskkill: %s",
-    async (code) => {
-      const directory = mkdtempSync(path.join(os.tmpdir(), "runner-process-"));
-      const kill = vi.fn<
-        (pid: number, signal: NodeJS.Signals | number) => boolean
-      >(() => {
-        throw Object.assign(new Error(`kill ${code}`), { code });
-      });
-      vi.stubGlobal("process", { ...process, kill, platform: "win32" });
-      const { spawn: normal } =
-        await vi.importActual<typeof import("node:child_process")>(
-          "node:child_process",
-        );
-      vi.mocked(spawn).mockImplementation((file, args, options) => {
-        if (file !== "taskkill") return normal(file, args, options);
-        const killer = new ChildProcess();
-        queueMicrotask(() => killer.emit("close", 1));
-        return killer;
-      });
-      const executor = createProcessExecutor(directory, directory, false);
-      const controller = new AbortController();
-      try {
-        const execution = executor(task, controller.signal);
-        controller.abort(new Error("cancel"));
-        // Assert
-        await expect(execution).rejects.toThrow(
-          code === "ESRCH" ? "Cancelled task" : "Task and cleanup failed",
-        );
-        expect(kill).toHaveBeenCalledWith(expect.any(Number), 0);
-      } finally {
-        rmSync(directory, { force: true, recursive: true });
-      }
-    },
-  );
 
   it.each([false, true])(
     "cancels owned Windows commands and waits for closure in CI=%s",
@@ -265,36 +267,6 @@ describe("process boundary", () => {
       }
     },
   );
-
-  it.each(["ok", "gone", "denied"])(
-    "uses POSIX group escalation and preserves cleanup errors: %s",
-    async (mode) => {
-      const directory = mkdtempSync(path.join(os.tmpdir(), "runner-process-"));
-      const original = process;
-      const kill = vi.fn<
-        (pid: number, signal: NodeJS.Signals | number) => boolean
-      >(() => {
-        if (mode !== "ok")
-          throw Object.assign(new Error(mode), {
-            code: mode === "gone" ? "ESRCH" : "EPERM",
-          });
-        return true;
-      });
-      vi.stubGlobal("process", { ...original, kill, platform: "linux" });
-      const executor = createProcessExecutor(directory, directory, false);
-      const controller = new AbortController();
-      try {
-        const execution = executor(task, controller.signal);
-        controller.abort(new Error("cancel"));
-        await expect(execution).rejects.toThrow(
-          mode === "denied" ? "Task and cleanup failed" : "Cancelled task",
-        );
-        expect(kill).toHaveBeenCalledWith(expect.any(Number), "SIGTERM");
-        const signals = kill.mock.calls.map(([, signal]) => signal);
-        expect(signals.includes("SIGKILL")).toBe(mode !== "denied");
-      } finally {
-        rmSync(directory, { force: true, recursive: true });
-      }
-    },
-  );
 });
+
+registerProcessTerminationTests();

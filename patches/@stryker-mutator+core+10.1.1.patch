@@ -1,0 +1,12 @@
+diff --git a/node_modules/@stryker-mutator/core/dist/src/child-proxy/child-process-proxy.js b/node_modules/@stryker-mutator/core/dist/src/child-proxy/child-process-proxy.js
+index b1b7bc4..1061c40 100644
+--- a/node_modules/@stryker-mutator/core/dist/src/child-proxy/child-process-proxy.js
++++ b/node_modules/@stryker-mutator/core/dist/src/child-proxy/child-process-proxy.js
+@@ -28,6 +28,7 @@ export class ChildProcessProxy {
+         const workerId = idGenerator.next().toString();
+         this.worker = childProcess.fork(fileURLToPath(new URL('./child-process-proxy-worker.js', import.meta.url)), {
+             silent: true,
++            windowsHide: true,
+             execArgv,
+             env: { STRYKER_MUTATOR_WORKER: workerId, ...process.env },
+         });
