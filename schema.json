@@ -5,6 +5,10 @@
   "additionalProperties": false,
   "required": ["version", "packages"],
   "properties": {
+    "$comment": {
+      "type": "string",
+      "description": "Optional configuration comment, commonly used to mark generated files."
+    },
     "version": { "const": 2 },
     "packages": {
       "type": "object",

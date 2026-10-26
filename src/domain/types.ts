@@ -23,6 +23,7 @@ export type ExecuteCommand = (
 ) => Promise<void>;
 
 export interface RunnerConfig {
+  readonly $comment?: string;
   readonly packages: Readonly<
     Record<string, Readonly<Record<string, TaskDefinition>>>
   >;

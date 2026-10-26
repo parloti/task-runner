@@ -106,7 +106,10 @@ export function parseConfiguration(value: unknown): RunnerConfig {
   const input = object(value, "configuration");
   if (input["version"] !== 2)
     throw new Error("Unsupported configuration version; expected 2");
-  knownKeys(input, ["packages", "version"], "configuration");
+  knownKeys(input, ["$comment", "packages", "version"], "configuration");
+  const comment = input["$comment"];
+  if (comment !== undefined && typeof comment !== "string")
+    throw new TypeError("Expected string: configuration $comment");
   const packages: Record<
     string,
     Record<string, TaskDefinition>
@@ -141,7 +144,11 @@ export function parseConfiguration(value: unknown): RunnerConfig {
     }
     packages[name] = tasks;
   }
-  return { packages, version: 2 };
+  return {
+    ...(comment !== undefined && { $comment: comment }),
+    packages,
+    version: 2,
+  };
 }
 
 /**

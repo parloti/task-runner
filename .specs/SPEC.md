@@ -147,6 +147,8 @@
 - Angular, extension, utility, browser/Playwright, and style descriptors control
   applicable commands; absent inapplicable tasks are not required.
 - Root aliases use unique workspace suffixes; duplicate names/paths/suffixes fail.
+- Generated preset configs include a valid JSON `$comment` warning that manual
+  edits will be overwritten; the configuration parser and schema accept it.
 
 ## Operational limits
 
