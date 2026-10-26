@@ -41,7 +41,7 @@
     "clean": "npx --yes rimraf dist",
     "\n    • ---------- compilation  ---------- •": "",
     "pack": "npm pack --pack-destination dist",
-    "compile": "tsc --build --force ./tsconfig.app.json",
+    "compile": "tsc --build --force ./tsconfig.app.json && node scripts/mark-cli-executable.ts",
     "resolve-paths": "npx --yes tsc-alias --project ./tsconfig.app.json --resolve-full-paths",
     "\n# ---------------- LINTING  ---------------- #": "",
     "\n    • ------------ checking ------------ •": "",
