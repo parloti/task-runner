@@ -34,7 +34,7 @@ jobs:
         run: npm run validate
 
       - name: 📝 Build generated docs
-        run: npm run docs
+        run: npm run --if-present docs
 
       - name: 🔎 Verify release baseline
         run: |
@@ -81,6 +81,7 @@ jobs:
         run: npx semantic-release
 
       - name: 🚀 Deploy to GitHub Pages
+        if: ${{ hashFiles('docs/**') != '' }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
