@@ -94,6 +94,7 @@ describe("packed distribution", () => {
         encoding: "utf8",
         env: isolatedEnvironment(),
         timeout: 60_000,
+        windowsHide: true,
       });
     try {
       // Act
