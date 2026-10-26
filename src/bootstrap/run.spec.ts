@@ -1,12 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { executeGraph } from "../application";
 import { runTasks } from "./run";
+import { prepareRunLogDirectory } from "./run-logs";
 
 vi.mock("../application", () => ({ executeGraph: vi.fn() }));
+vi.mock("./run-logs", () => ({ prepareRunLogDirectory: vi.fn() }));
 vi.mock("node:os", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:os")>()),
   availableParallelism: vi.fn(),
@@ -15,6 +17,15 @@ vi.mock("node:os", async (importOriginal) => ({
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetAllMocks();
+});
+
+beforeEach(() => {
+  vi.mocked(prepareRunLogDirectory).mockImplementation((root) =>
+    Promise.resolve({
+      directory: path.join(root, "logs", "task-runner"),
+      release: vi.fn(),
+    }),
+  );
 });
 
 describe("runtime concurrency policy", () => {
@@ -62,4 +73,45 @@ describe("runtime concurrency policy", () => {
       }
     },
   );
+
+  it("preserves execution and log cleanup failures together", async () => {
+    // Arrange
+    const directory = mkdtempSync(path.join(tmpdir(), "runner-failure-"));
+    writeFileSync(path.join(directory, "package.json"), "{}");
+    writeFileSync(
+      path.join(directory, "task-runner.json"),
+      JSON.stringify({ packages: { ".": { check: {} } }, version: 2 }),
+    );
+    const executionError = new Error("execution failed");
+    const cleanupError = new Error("log cleanup failed");
+    vi.mocked(availableParallelism).mockReturnValue(2);
+    vi.mocked(executeGraph).mockRejectedValueOnce(executionError);
+    vi.mocked(prepareRunLogDirectory).mockImplementationOnce((root) =>
+      Promise.resolve({
+        directory: path.join(root, "logs", "task-runner"),
+        release: () => {
+          throw cleanupError;
+        },
+      }),
+    );
+
+    try {
+      // Act
+      let failure: unknown;
+      try {
+        await runTasks("check", { cwd: directory });
+      } catch (error) {
+        failure = error;
+      }
+
+      // Assert
+      expect(failure).toBeInstanceOf(AggregateError);
+      if (!(failure instanceof AggregateError))
+        throw new Error("Expected combined execution and cleanup errors");
+      expect(failure.errors).toEqual([executionError, cleanupError]);
+      expect(failure.cause).toBe(cleanupError);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
 });

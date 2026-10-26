@@ -97,27 +97,25 @@ describe("real runtime", () => {
         firstError.message.includes("Command failed (7): failure");
       expect(hasFailureMessage).toBe(true);
       expect(result.states.values().toArray()).toContain("cancelled");
-      const pidDirectory = path.join(
-        directory,
-        "logs",
-        "task-runner",
-        String(process.pid),
-      );
-      const logs = readdirSync(pidDirectory).filter((name) =>
+      const logDirectory = path.join(directory, "logs", "task-runner");
+      const logs = readdirSync(logDirectory).filter((name) =>
         name.endsWith(".log"),
       );
-      expect(logs).toEqual([expect.stringMatching(/^failure-.*\.log$/)]);
+      const logPattern = new RegExp(
+        String.raw`^\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z-failure-${String(process.pid)}\.log$`,
+      );
+      expect(logs).toEqual([expect.stringMatching(logPattern)]);
       const firstLog = logs.at(0);
       if (firstLog === undefined) throw new Error("Expected a task log");
-      expect(readFileSync(path.join(pidDirectory, firstLog), "utf8")).toContain(
+      expect(readFileSync(path.join(logDirectory, firstLog), "utf8")).toContain(
         "actual failure",
       );
-      const eventsFile = readdirSync(pidDirectory).find((name) =>
+      const eventsFile = readdirSync(logDirectory).find((name) =>
         name.endsWith(".jsonl"),
       );
       if (eventsFile === undefined) throw new Error("Expected an events log");
       const events: Record<string, unknown>[] = readFileSync(
-        path.join(pidDirectory, eventsFile),
+        path.join(logDirectory, eventsFile),
         "utf8",
       )
         .trim()
@@ -214,14 +212,9 @@ describe("real runtime", () => {
       expect(() => process.kill(pid, 0)).toThrow();
       expect(result.states.values().toArray()).toContain("cancelled");
       expect(result.errors).toEqual([]);
-      const pidLogDirectory = path.join(
-        directory,
-        "logs",
-        "task-runner",
-        String(process.pid),
-      );
+      const logDirectory = path.join(directory, "logs", "task-runner");
       expect(
-        readdirSync(pidLogDirectory).every((name) => name.endsWith(".jsonl")),
+        readdirSync(logDirectory).every((name) => name.endsWith(".jsonl")),
       ).toBe(true);
     } finally {
       controller.abort();

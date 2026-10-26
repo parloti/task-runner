@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import path from "node:path";
 
@@ -15,6 +15,7 @@ import {
   loadScripts,
   parseConfiguration,
 } from "../infrastructure";
+import { prepareRunLogDirectory } from "./run-logs";
 
 /**
  * Load configuration and run the selected task entrypoint.
@@ -47,8 +48,7 @@ export async function runTasks(
     throw new Error("Concurrency must be a positive integer");
   options.onPlan?.(graph, target);
   const runId = randomUUID();
-  const directory = path.join(root, "logs", "task-runner", String(process.pid));
-  mkdirSync(directory, { recursive: true });
+  const { directory, release } = await prepareRunLogDirectory(root, runId);
   const onEvent = (event: TaskEvent): void => {
     appendFileSync(
       path.join(directory, `events-${runId}.jsonl`),
@@ -61,9 +61,41 @@ export async function runTasks(
     );
     options.onEvent?.(event);
   };
-  return executeGraph(graph, createProcessExecutor(root, directory, ci), {
-    concurrency,
-    onEvent,
-    ...(options.signal !== undefined && { signal: options.signal }),
-  });
+  let result: RunResult | undefined;
+  let executionFailed = false;
+  let executionError: unknown;
+  try {
+    result = await executeGraph(
+      graph,
+      createProcessExecutor(root, directory, ci),
+      {
+        concurrency,
+        onEvent,
+        ...(options.signal !== undefined && { signal: options.signal }),
+      },
+    );
+  } catch (error) {
+    executionFailed = true;
+    executionError = error;
+  }
+
+  let cleanupFailed = false;
+  let cleanupError: unknown;
+  try {
+    release();
+  } catch (error) {
+    cleanupFailed = true;
+    cleanupError = error;
+  }
+
+  if (executionFailed && cleanupFailed)
+    throw new AggregateError(
+      [executionError, cleanupError],
+      "Task execution and log cleanup failed",
+      { cause: cleanupError },
+    );
+  if (executionFailed) throw executionError;
+  if (cleanupFailed) throw cleanupError;
+  if (result === undefined) throw new Error("Execution returned no result");
+  return result;
 }

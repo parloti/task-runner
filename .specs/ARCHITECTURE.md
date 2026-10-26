@@ -18,8 +18,9 @@
 - Process adapters implement npm/shell execution, tree termination, and streams.
 - Domain execution errors distinguish expected command failure/cancellation.
   The CLI prints concise command failures; cancellation retains status without
-  error diagnostics. Infrastructure owns safe PID/task/timestamp log paths;
-  bootstrap keeps UUID-correlated event streams separate within each PID folder.
+  error diagnostics. Infrastructure owns safe timestamp/task/PID log paths;
+  bootstrap clears stale logs only when no other invocation is active and keeps
+  UUID-correlated event streams separate in the shared log folder.
 - CLI progress and library subscribers receive the same scheduler events.
 - `onPlan` delivers the selected validated graph before execution; `onEvent`
   delivers state transitions. The presentation-only view deduplicates shared

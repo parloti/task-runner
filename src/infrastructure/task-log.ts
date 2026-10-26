@@ -26,5 +26,8 @@ export function taskLogPath(directory: string, task: CompiledTask): string {
   const timestamp = new Date(lastTimestamp.value)
     .toISOString()
     .replaceAll(/[:.]/g, "-");
-  return path.join(directory, `${name}-${timestamp}.log`);
+  return path.join(
+    directory,
+    `${timestamp}-${name}-${String(process.pid)}.log`,
+  );
 }

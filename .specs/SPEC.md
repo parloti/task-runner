@@ -39,10 +39,11 @@
 ## Diagnostics
 
 - Scheduler events identify task, package, status, and terminal duration/error.
-- Command logs use `logs/task-runner/<pid>/<full-task-name>-<timestamp>.log`.
-  Full names include workspace and readable task names, with filesystem-safe
-  normalization and bounded length. ISO timestamps are filename-safe and
-  monotonically unique within the process, including concurrent invocations.
+- Command logs use
+  `logs/task-runner/<timestamp>-<full-task-name>-<pid>.log`. Full names include
+  workspace and readable task names, with filesystem-safe normalization and
+  bounded length. ISO timestamps are filename-safe and monotonically unique
+  within the process, including concurrent invocations.
 - Successful and cancelled command logs are removed after streams close and
   owned-process cleanup finishes. Failures retain both output streams.
   Expected command failures print readable names and relative log paths, without
@@ -50,8 +51,12 @@
   statuses remain in the progress tree and event stream. Unexpected IO, spawn,
   and cleanup errors remain visible, including during cancellation.
   CI keeps its existing streamed output behavior without command-output files.
-- UUID-correlated `events-<run-id>.jsonl` files isolate invocations sharing a PID.
-- No invocation clears another invocation's logs.
+- Each invocation clears `logs/task-runner` before execution when no other
+  invocation is active. Active invocations register before releasing the
+  startup lock; overlapping invocations share the folder and never clear one
+  another's logs. A later non-overlapping invocation clears retained files.
+- UUID-correlated `events-<run-id>.jsonl` files in the same folder isolate
+  invocation event streams, including invocations sharing a PID.
 - Interactive terminals show a nested, animated task list with readable package
   and task labels. Pending, ready, running, succeeded, failed, skipped, blocked,
   and cancelled states remain distinguishable.

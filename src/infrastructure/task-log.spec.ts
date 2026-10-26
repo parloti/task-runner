@@ -17,13 +17,15 @@ const task: CompiledTask = {
 afterEach(() => vi.restoreAllMocks());
 
 describe("task output paths", () => {
-  it("names logs by full workspace task and a safe ISO timestamp", () => {
+  it("names logs by a safe ISO timestamp, full workspace task, and PID", () => {
     // Arrange & Act
     const log = taskLogPath("logs", task);
     // Assert
     expect(path.dirname(log)).toBe("logs");
     expect(path.basename(log)).toMatch(
-      /^apps-automation-test-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z\.log$/,
+      new RegExp(
+        String.raw`^\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z-apps-automation-test-${String(process.pid)}\.log$`,
+      ),
     );
     expect(log).not.toContain("validation");
   });
@@ -59,8 +61,12 @@ describe("task output paths", () => {
       const log = taskLogPath("logs", definition);
       // Assert
       expect(path.dirname(log)).toBe("logs");
-      expect(path.basename(log).startsWith(expected)).toBe(true);
-      expect(path.basename(log)).not.toMatch(/[<>:"/\\|?*\p{Cc}]/u);
+      const fileName = path
+        .basename(log)
+        .replace(/^\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z-/, "");
+      expect(fileName.endsWith(`-${String(process.pid)}.log`)).toBe(true);
+      expect(fileName.startsWith(expected)).toBe(true);
+      expect(fileName).not.toMatch(/[<>:"/\\|?*\p{Cc}]/u);
     },
   );
 });

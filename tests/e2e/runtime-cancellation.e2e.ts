@@ -72,9 +72,7 @@ describe("real runtime", () => {
       expect(existsSync(path.join(directory, "pre"))).toBe(true);
       expect(existsSync(path.join(directory, "post"))).toBe(true);
       const logs = path.join(directory, "logs", "task-runner");
-      expect(readdirSync(logs)).toEqual([String(process.pid)]);
-      const pidLogDirectory = path.join(logs, String(process.pid));
-      expect(readdirSync(pidLogDirectory)).toEqual([
+      expect(readdirSync(logs)).toEqual([
         expect.stringMatching(/^events-[\da-f-]+\.jsonl$/),
       ]);
     } finally {
@@ -93,6 +91,9 @@ describe("real runtime", () => {
       },
     });
     try {
+      const logRoot = path.join(directory, "logs", "task-runner");
+      mkdirSync(logRoot, { recursive: true });
+      writeFileSync(path.join(logRoot, "old.log"), "stale output");
       // Act
       const results = await Promise.all([
         runTasks("check", { cwd: directory }),
@@ -100,23 +101,21 @@ describe("real runtime", () => {
       ]);
       // Assert
       expect(results.every((result) => !result.success)).toBe(true);
-      const logRoot = path.join(directory, "logs", "task-runner");
-      expect(readdirSync(logRoot)).toEqual([String(process.pid)]);
-      const pidDirectory = path.join(logRoot, String(process.pid));
-      const files = readdirSync(pidDirectory);
+      const files = readdirSync(logRoot);
+      expect(files).not.toContain("old.log");
       const logs = files.filter((name) => name.endsWith(".log"));
       expect(logs).toHaveLength(2);
       expect(files.filter((name) => name.startsWith("events-"))).toHaveLength(
         2,
       );
       for (const log of logs) {
-        expect(log).toMatch(/^end-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z\.log$/);
-        expect(readFileSync(path.join(pidDirectory, log), "utf8")).toContain(
-          "out",
+        expect(log).toMatch(
+          new RegExp(
+            String.raw`^\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z-end-${String(process.pid)}\.log$`,
+          ),
         );
-        expect(readFileSync(path.join(pidDirectory, log), "utf8")).toContain(
-          "err",
-        );
+        expect(readFileSync(path.join(logRoot, log), "utf8")).toContain("out");
+        expect(readFileSync(path.join(logRoot, log), "utf8")).toContain("err");
       }
     } finally {
       rmSync(directory, { force: true, recursive: true });
