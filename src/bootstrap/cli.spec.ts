@@ -53,10 +53,10 @@ describe("executable CLI", () => {
       await import("./cli.js");
       // Assert
       expect(process.exitCode).toBe(1);
-      expect(error.mock.calls).toEqual([
-        [unexpectedExecutorError],
-        ["Tasks: 1 | failed: 1\n"],
-      ]);
+      expect(error.mock.calls[0]).toEqual([unexpectedExecutorError]);
+      expect(error.mock.calls[1]?.[0]).toMatch(
+        /^Tasks: 1 \| failed: 1 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\n$/,
+      );
     } finally {
       vi.doUnmock(import("../infrastructure"));
       rmSync(directory, { force: true, recursive: true });
@@ -167,7 +167,10 @@ describe("executable CLI", () => {
         const expectedLastError =
           outcome === "after-plan"
             ? lastError instanceof Error
-            : lastError === `Tasks: 1 | ${status}: 1\n`;
+            : typeof lastError === "string" &&
+              new RegExp(
+                String.raw`^Tasks: 1 \| ${status}: 1 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\n$`,
+              ).test(lastError);
         expect(expectedLastError).toBe(true);
         expect(error).toHaveBeenCalledTimes(outcome === "failure" ? 2 : 1);
         expect(process.stdin.listeners("data")).toEqual(originalDataListeners);

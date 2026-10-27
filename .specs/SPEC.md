@@ -124,8 +124,9 @@
 - After a run returns, the CLI prints a persistent command-only task-status
   summary after any failure/log diagnostics, on success, failure, or cancellation.
   It uses the live footer's counts, excludes groups and zero-count statuses,
-  and is also present in plain/CI output. Preflight or runner exceptions do not
-  print a completed-run summary.
+  includes the runner completion timestamp in ISO 8601 UTC format, and is also
+  present in plain/CI output. Preflight or runner exceptions do not print a
+  completed-run summary.
 - External telemetry can subscribe through the event contract; a backend is not
   required to execute local commands.
 

@@ -206,7 +206,11 @@ describe("executable CLI", () => {
         ).toBe(code !== 0);
         expect(errorOutput).not.toContain("at file:");
         expect(error).toHaveBeenLastCalledWith(
-          `Tasks: 1 | ${code === 0 ? "succeeded" : "failed"}: 1\n`,
+          expect.stringMatching(
+            new RegExp(
+              String.raw`^Tasks: 1 \| ${code === 0 ? "succeeded" : "failed"}: 1 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\n$`,
+            ),
+          ),
         );
         expect(error).toHaveBeenCalledTimes(code === 0 ? 1 : 2);
       } finally {

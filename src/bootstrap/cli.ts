@@ -41,6 +41,7 @@ try {
         : undefined,
     );
     let result;
+    let finishedAt: string;
     try {
       result = await runTasks(input.entrypoint, {
         ...input.options,
@@ -52,6 +53,7 @@ try {
         },
         signal: controller.signal,
       });
+      finishedAt = new Date().toISOString();
     } finally {
       progress.stop();
     }
@@ -60,7 +62,7 @@ try {
       console.error(
         error instanceof CommandFailedError ? error.message : error,
       );
-    console.error(`${progress.summary()}\n`);
+    console.error(`${progress.summary()} | Finished at: ${finishedAt}\n`);
   }
 } catch (error) {
   console.error(error);
