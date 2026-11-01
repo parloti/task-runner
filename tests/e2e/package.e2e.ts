@@ -208,7 +208,7 @@ describe("packed distribution", () => {
       expect(cli.stderr).not.toContain('[".","');
       expect(cli.stderr).not.toContain("\u{1B}[");
       expect(cli.stderr).toMatch(
-        /Tasks: 2 \| succeeded: 1 \| skipped: 1\r?\n\r?\n$/,
+        /Tasks: 2 \| succeeded: 1 \| skipped: 1 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\r?\n\r?\n$/,
       );
       assert.equal(library.status, 0, library.stderr);
       expect(library.stdout).toContain('"success":true');

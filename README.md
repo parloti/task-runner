@@ -192,7 +192,8 @@ errors; they never set process exit status or install global signal handlers.
   Unexpected runner/cleanup failures still surface normally.
   After success, failure, or cancellation, a persistent task-status summary
   follows any failure/log messages, including in plain/CI output. It uses the
-  same command-only counts as the live footer.
+  same command-only counts as the live footer and ends with the completion
+  timestamp in ISO 8601 UTC format (`| Finished at: <timestamp>`).
   Structured events remain in separate `events-<run-id>.jsonl` files per invocation.
   Command output may contain sensitive tool output; treat retained logs accordingly.
 
