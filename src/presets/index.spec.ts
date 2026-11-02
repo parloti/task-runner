@@ -25,7 +25,7 @@ describe("workflow presets", () => {
     ).toThrow("# is reserved");
   });
   it.each([false, true])(
-    "gates documentation on completed builds (monorepo=%s)",
+    "orders documentation after selected builds during validation (monorepo=%s)",
     (monorepo) => {
       // Arrange
       const preset = createWorkspacePreset([
@@ -44,12 +44,13 @@ describe("workflow presets", () => {
         ]),
       );
       // Act
-      const graph = compileGraph(preset.config, "docs", scripts);
+      const graph = compileGraph(preset.config, "validate", scripts);
       // Assert
       expect(preset.config.packages["."]?.["docs"]?.dependsOn).toEqual([
         "build",
       ]);
-      expect(graph.keys().toArray().at(-1)).toBe("docs");
+      const docs = graph.values().find((task) => task.id === "docs");
+      expect(docs?.dependsOn).toEqual(["build"]);
       const packagePaths = monorepo ? ["packages/lib", "apps/web"] : ["."];
       for (const path of packagePaths) {
         const build = path === "." ? "build" : `${path}#build`;
@@ -163,6 +164,7 @@ describe("workflow presets", () => {
     ]);
     expect(preset.config.packages["."]?.[target]?.dependsOn).toEqual([
       "lint",
+      "build",
       "validate:lib",
       "validate:web",
       "docs",

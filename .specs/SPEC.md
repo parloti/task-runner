@@ -15,12 +15,14 @@
   or entrypoint mappings. Any local task is directly invocable. Bare dependency
   names resolve locally; `<package-path>#<task>` selects another package and
   `.#<task>` explicitly selects the root. `#` is reserved in paths and names.
-  Commandless tasks represent groups and aliases. A directly invoked command
-  starts at that command and omits its direct command prerequisites, which
-  represent earlier steps that may already be complete. Group invocations
-  expand all prerequisites and preserve their ordering constraints. For example,
-  running `mutation` directly skips `test`, while `test:all` runs `test` before
-  `mutation`. Version 1 is unsupported.
+  Commandless tasks represent groups and aliases; their `dependsOn` lists select
+  members recursively, stopping at commands. A command's `dependsOn` only orders
+  tasks already selected; it never adds earlier commands or groups to the run.
+  Direct commands start at themselves. Mutation groups and workspace aliases
+  run only their selected mutation tasks, without tests or builds; dependencies
+  between selected mutation tasks still apply. A `test:all` group explicitly
+  selecting both `test` and `mutation` runs them in dependency order.
+  Version 1 is unsupported.
   Generated configuration omits empty dependency lists.
 - Package paths are config-relative; invocation selects the nearest containing
   configured package, including when called from a nested directory.
@@ -29,7 +31,7 @@
 - Preflight validates the complete configuration, declared manifests/scripts,
   references, cycles, and positive integer concurrency before command side effects.
 - Required scripts fail when absent/empty; explicitly optional scripts skip.
-- Prerequisites must succeed or explicitly skip before dependents start.
+- Selected prerequisites must succeed or explicitly skip before dependents start.
 - Each task identity executes once per run. Independent tasks can overlap up to
   the global leaf-command limit; dependency waits do not consume slots.
 - Default concurrency is `max(1, availableParallelism() - 1)`.
@@ -75,6 +77,11 @@
   `validate:<workspace>` groups establish the named workspace context.
   Cross-package groups retain their prefix at the boundary, but their children
   omit it. Siblings retain their own parent's context at every nesting depth.
+- Cross-workspace command labels use `<package-suffix>:<task>` when the suffix
+  is unique, such as `automation:mutation`; ambiguous suffixes use the full
+  package path. Tasks within the current package context omit that qualifier.
+  Failure and cancellation messages use the same labels; event data and log
+  paths retain the full package path.
 - Pending and successful groups collapse in live output by default. Groups
   expand when their displayed subtree starts; nested pending groups remain
   collapsed. Failed, blocked, and cancelled groups remain expanded.
@@ -137,10 +144,11 @@
 - Build orders clean, compile, and path resolution; internal dependencies build
   before consumers. Package pack is an ordinary npm command depending on build,
   without a separate pack:artifact task. Root monorepo pack aggregates packages.
-- Documentation depends on the package build. Root monorepo documentation waits
-  for the aggregate workspace build, including when invoked directly.
+- Documentation depends on the package build when both are selected. Root
+  monorepo validation explicitly includes the aggregate build so documentation
+  waits for all workspace builds. Invoking docs or pack alone does not build.
 - Root lint runs once. Root validation omits duplicate workspace lint and gates
-  workspace typechecks/tests on builds. Root typecheck waits for all builds.
+  workspace typechecks/tests on selected builds. Direct typecheck skips builds.
 - Monorepo validation groups workspace checks under `validate:<workspace>`
   alongside root lint. Root docs follow those groups in the display; shared
   prerequisite execution and global concurrency are unchanged.

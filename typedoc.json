@@ -1,0 +1,19 @@
+{
+  "entryPoints": ["./src/index.ts", "./src/presets/index.ts"],
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "powershell",
+    "yaml",
+    "tsx",
+    "typescript"
+  ],
+  "out": "./docs/api",
+  "tsconfig": "./tsconfig.app.json"
+}

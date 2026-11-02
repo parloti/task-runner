@@ -28,6 +28,7 @@
       "additionalProperties": false,
       "properties": {
         "dependsOn": {
+          "description": "Group members for commandless tasks. For commands, ordering constraints only between tasks already selected; earlier tasks are not automatically included.",
           "type": "array",
           "items": {
             "type": "string",

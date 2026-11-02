@@ -21,7 +21,7 @@ function graph() {
         a: { dependsOn: ["shared"], run: { command: "a", kind: "shell" } },
         b: { dependsOn: ["shared"], run: { command: "b", kind: "shell" } },
         docs: { run: { kind: "npm", optional: true, script: "docs" } },
-        end: { dependsOn: ["a", "b", "docs"] },
+        end: { dependsOn: ["shared", "a", "b", "docs"] },
         shared: { run: { command: "shared", kind: "shell" } },
       },
     },

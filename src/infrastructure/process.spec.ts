@@ -146,6 +146,33 @@ describe("process boundary", () => {
     }
   });
 
+  it("uses the short package label in process failures", async () => {
+    // Arrange
+    const packagePaths = [".", "apps/automation"];
+    const label = "automation:mutation";
+    const directory = mkdtempSync(path.join(os.tmpdir(), "runner-process-"));
+    const executor = createProcessExecutor(
+      directory,
+      directory,
+      true,
+      packagePaths,
+    );
+    const mutation: CompiledTask = {
+      ...task,
+      id: make<TaskId>()("apps/automation#mutation"),
+      package: "apps/automation",
+      run: { command: `node -e "process.exitCode=2"`, kind: "shell" },
+    };
+    try {
+      // Act & Assert
+      await expect(
+        executor(mutation, new AbortController().signal),
+      ).rejects.toThrow(`Command failed (2): ${label}`);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
   it.each([false, true])(
     "reports spawn errors and closes resources in CI=%s",
     async (ci) => {

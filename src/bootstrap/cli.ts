@@ -48,8 +48,8 @@ try {
         onEvent: (event) => {
           progress.update(event);
         },
-        onPlan: (graph, target) => {
-          progress.start(graph, target);
+        onPlan: (graph, target, packagePaths) => {
+          progress.start(graph, target, packagePaths);
         },
         signal: controller.signal,
       });

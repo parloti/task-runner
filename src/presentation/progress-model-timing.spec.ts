@@ -145,7 +145,7 @@ describe("nested progress model", () => {
         "    . clean (pending)",
         "    . compile (pending)",
         "  . pack (pending)",
-        "  . packages/lib > test (pending)",
+        "  . lib:test (pending)",
       ].join("\n"),
     );
   });

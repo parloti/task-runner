@@ -54,6 +54,7 @@
     "${configDir}/dist",
     "${configDir}/coverage",
     "${configDir}/node_modules",
-    "${configDir}/temp"
+    "${configDir}/temp",
+    "${configDir}/tmp"
   ]
 }

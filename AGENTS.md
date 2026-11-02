@@ -11,8 +11,17 @@
   Omit empty dependencies; keep package pack as a direct npm command.
 - One scheduler owns execution. Renderers consume events and never schedule
   commands or re-resolve prerequisites.
+- Start at the requested task or group members. Command `dependsOn` only orders
+  selected tasks; never pull earlier phases into direct commands or aliases.
+  Groups must explicitly list every command they intend to run.
+- Preset scripts for groups, aggregates, and root aliases call
+  `task-runner run`. Deciding that a script selecting one command calls npm
+  directly belongs to the consumer writing npm scripts (Workspaces Manager).
 - Keep nested terminal progress presentation-only; use the validated plan for
   hierarchy and scheduler events for state. CI/non-TTY output must not animate.
+- Qualify cross-workspace task labels as `<unique-package-suffix>:<task>`, using
+  the full package path on suffix collisions; keep event identities and log
+  paths as package paths.
 - Concurrency and footer status counts concern command tasks only, never
   commandless groups. Group spinners/timers start only with their displayed
   subtree, not shared prerequisites owned by another group.

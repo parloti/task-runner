@@ -6,6 +6,7 @@ import type { CompiledTask, TaskEvent, TaskId, TaskStatus } from "../domain";
 import { compileGraph } from "../domain";
 import { createWorkspacePreset } from "../presets";
 import { ProgressModel } from "./progress-model";
+import { taskLabel } from "./progress-model-rendering";
 
 const id = make<TaskId>();
 const task = (
@@ -36,6 +37,27 @@ const event = (
 afterEach(() => vi.useRealTimers());
 
 describe("nested progress model", () => {
+  it("omits the package qualifier when the current scope matches", () => {
+    // Arrange
+    const command = task("mutation", [], true, "apps/automation");
+    // Act
+    const label = taskLabel(command, "apps/automation", [
+      ".",
+      "apps/automation",
+    ]);
+    // Assert
+    expect(label).toBe("mutation");
+  });
+
+  it("qualifies cross-workspace commands with their package suffix", () => {
+    // Arrange
+    const command = task("mutation", [], true, "apps/automation");
+    // Act
+    const label = taskLabel(command, ".", [".", "apps/automation"]);
+    // Assert
+    expect(label).toBe("automation:mutation");
+  });
+
   it.each<TaskStatus>([
     "pending",
     "ready",
@@ -116,7 +138,7 @@ describe("nested progress model", () => {
     // Act
     const frame = model.frame(0, 20);
     // Assert
-    expect(frame).toBe(". pkg  > shell name (pending)");
+    expect(frame).toBe(". pkg :shell name (pending)");
     expect(frame).not.toContain("\u{1B}");
   });
 
@@ -211,7 +233,7 @@ describe("nested progress model", () => {
     // Act
     const frame = new ProgressModel(graph, "validate:web", false).frame(0);
     // Assert
-    expect(frame).toContain("    . packages/lib > build (pending)");
+    expect(frame).toContain("    . lib:build (pending)");
     expect(frame).toContain("      . clean (pending)");
     expect(frame.match(/clean \(pending\)/g)).toHaveLength(2);
   });

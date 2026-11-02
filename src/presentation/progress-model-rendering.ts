@@ -2,7 +2,7 @@ import { stripVTControlCharacters } from "node:util";
 
 import type { CompiledTask, TaskStatus } from "../domain";
 
-import { taskName } from "../domain";
+import { qualifiedTaskName, taskName } from "../domain";
 
 /** Color preference supplied by the live terminal renderer. */
 export interface LiveAppearance {
@@ -59,14 +59,17 @@ const safeText = (value: string): string =>
  * Format a task label using the current package display scope.
  * @param task Task to label.
  * @param scope Package path whose prefix may be omitted.
+ * @param packagePaths All configured package paths.
  * @returns A terminal-safe readable label.
- * @example `taskLabel(task, "apps/web")` omits that package prefix.
+ * @example `taskLabel(task, ".", [".", "apps/web"])` returns `web:build`.
  */
-export function taskLabel(task: CompiledTask, scope: string): string {
+export function taskLabel(
+  task: CompiledTask,
+  scope: string,
+  packagePaths: readonly string[],
+): string {
   const name = taskName(task);
   return safeText(
-    task.package === "." || task.package === scope
-      ? name
-      : `${task.package} > ${name}`,
+    task.package === scope ? name : qualifiedTaskName(task, packagePaths),
   );
 }

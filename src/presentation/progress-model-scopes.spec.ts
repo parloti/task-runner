@@ -36,7 +36,29 @@ const event = (
 afterEach(() => vi.useRealTimers());
 
 describe("nested progress model", () => {
-  it("keeps package prefixes when a validation-named group spans multiple workspaces", () => {
+  it("labels a workspace mutation task as automation:mutation", () => {
+    // Arrange
+    const target = "mutation";
+    const command: CompiledTask = {
+      dependsOn: [],
+      id: id("apps/automation#mutation"),
+      package: "apps/automation",
+      run: { kind: "npm", script: "mutation" },
+      skip: false,
+    };
+    const model = new ProgressModel(
+      graphFor(task(target, ["apps/automation#mutation"], false), command),
+      target,
+      false,
+      [".", "apps/automation"],
+    );
+    // Act
+    const frame = model.frame(0);
+    // Assert
+    expect(frame).toContain("automation:mutation");
+  });
+
+  it("uses short package labels when a validation group spans multiple workspaces", () => {
     // Arrange
     const group = "validate:automation";
     const model = new ProgressModel(
@@ -51,8 +73,26 @@ describe("nested progress model", () => {
     // Act
     const frame = model.frame(0, 20);
     // Assert
-    expect(frame).toContain("apps/automation > one");
-    expect(frame).toContain("packages/lib > two");
+    expect(frame).toContain("automation:one");
+    expect(frame).toContain("lib:two");
+  });
+  it("uses a full package path when configured suffixes collide", () => {
+    // Arrange
+    const target = "mutation";
+    const command = {
+      ...task("automation-mutation", [], true, "apps/automation"),
+      run: { kind: "npm", script: "mutation" } as const,
+    };
+    const model = new ProgressModel(
+      graphFor(task(target, ["automation-mutation"], false), command),
+      target,
+      false,
+      [".", "apps/automation", "packages/automation"],
+    );
+    // Act
+    const frame = model.frame(0);
+    // Assert
+    expect(frame).toContain("apps/automation:mutation");
   });
   it("does not reserve dependencies for a command that resembles a validation group", () => {
     // Arrange
@@ -69,7 +109,7 @@ describe("nested progress model", () => {
     const frame = model.frame(0);
     model.update(event("compile", "succeeded", 100));
     // Assert
-    expect(frame).toContain(". apps/web > compile (pending)");
+    expect(frame).toContain(". web:compile (pending)");
     expect(model.eventLine(event("compile", "succeeded"))).toContain(
       "compile (succeeded",
     );
@@ -97,10 +137,11 @@ describe("nested progress model", () => {
       "  . docs (pending)",
     ]);
     expect(frame).toContain("    . test:all (pending)");
+    expect(frame).not.toContain("web:");
     expect(frame).not.toContain("validation:[");
     expect(frame.match(/clean \(pending\)/g)).toHaveLength(2);
-    expect(frame).not.toContain("apps/web >");
-    expect(frame).not.toContain("packages/lib >");
+    expect(frame).not.toContain("apps/web:");
+    expect(frame).not.toContain("packages/lib:");
   });
   it.each([true, false])(
     "collapses completed subtasks only when enabled: %s",

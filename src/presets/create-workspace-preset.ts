@@ -96,31 +96,25 @@ export function createWorkspacePreset(
       packageScripts[name] = `task-runner run ${name}`;
       return id;
     };
-    tasks["compile"] = {
-      dependsOn: ["clean"],
-      run: { kind: "npm", script: "compile" },
-    };
-    tasks["resolve-paths"] = {
-      dependsOn: ["compile"],
-      run: { kind: "npm", script: "resolve-paths" },
-    };
+    npm("compile", ["clean"]);
+    npm("resolve-paths", ["compile"]);
     const internalBuilds = (pkg.internalDependencies ?? []).map((name) => {
       const dependency = packages.find((candidate) => candidate.name === name);
       if (dependency === undefined || dependency.path === ".")
         throw new Error(`Unknown internal dependency: ${name}`);
       return key(dependency.path, "build");
     });
-    tasks["clean"] = {
-      ...(internalBuilds.length > 0 && { dependsOn: internalBuilds }),
-      run: { kind: "npm", script: "clean" },
-    };
-    group("build", ["resolve-paths"]);
+    npm("clean", internalBuilds);
+    group("build", [...internalBuilds, "clean", "compile", "resolve-paths"]);
     tasks["pack"] = {
       dependsOn: ["build"],
       run: { kind: "npm", script: "pack" },
     };
     group("lint", ["prettier", "eslint", ...(pkg.styles ? ["stylelint"] : [])]);
-    group("eslint:fix", [npm("eslint", ["check:rules"], ["--fix"])]);
+    group("eslint:fix", [
+      "check:rules",
+      npm("eslint", ["check:rules"], ["--fix"]),
+    ]);
     group("lint:fix", [
       "fmt",
       "eslint:fix",
@@ -242,7 +236,7 @@ export function createWorkspacePreset(
       ]);
       return name;
     });
-    aggregate("validate", ["lint", ...validations, "docs"]);
+    aggregate("validate", ["lint", "build", ...validations, "docs"]);
   }
   return {
     config: {

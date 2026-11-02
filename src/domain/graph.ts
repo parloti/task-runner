@@ -87,21 +87,23 @@ export function compileGraph(
   const targetId = resolveTaskReference(".", target);
   if (!graph.has(targetId)) throw new Error(`Unknown task: ${target}`);
   const selected = new Map<TaskId, CompiledTask>();
-  const select = (name: TaskId, entrypoint = false): void => {
+  const select = (name: TaskId): void => {
     if (selected.has(name)) return;
     const task = graph.get(name);
     if (task === undefined)
       throw new Error(`Compiled task is missing from graph: ${name}`);
-    const dependencies = task.dependsOn.filter((dependency) => {
-      if (!entrypoint || task.run === undefined) return true;
-      const prerequisite = graph.get(dependency);
-      if (prerequisite === undefined)
-        throw new Error(`Compiled task is missing from graph: ${dependency}`);
-      return prerequisite.run === undefined;
-    });
-    for (const dependency of dependencies) select(dependency);
-    selected.set(name, { ...task, dependsOn: dependencies });
+    if (task.run === undefined)
+      for (const dependency of task.dependsOn) select(dependency);
+    selected.set(name, task);
   };
-  select(targetId, true);
+  select(targetId);
+  for (const [name, task] of selected) {
+    selected.set(name, {
+      ...task,
+      dependsOn: task.dependsOn.filter((dependency) =>
+        selected.has(dependency),
+      ),
+    });
+  }
   return selected;
 }

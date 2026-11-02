@@ -28,9 +28,13 @@ export class TerminalProgress {
       throw new Error("Max tasks must be a positive integer");
   }
 
-  start(graph: ReadonlyMap<TaskId, CompiledTask>, target: string): void {
+  start(
+    graph: ReadonlyMap<TaskId, CompiledTask>,
+    target: string,
+    packagePaths?: readonly string[],
+  ): void {
     if (this.model !== undefined) throw new Error("Progress already started");
-    this.model = new ProgressModel(graph, target, this.collapse);
+    this.model = new ProgressModel(graph, target, this.collapse, packagePaths);
     if (!this.interactive) return;
     if (this.scroll === undefined) {
       this.redraw = createLogUpdate(this.output, { showCursor: true });

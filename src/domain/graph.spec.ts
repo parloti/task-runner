@@ -23,7 +23,7 @@ describe("graph compilation", () => {
     expect(graph.keys().toArray()).toEqual(["start", "left", "right", "end"]);
   });
 
-  it("skips direct command prerequisites but retains group prerequisites", () => {
+  it("starts a command without selecting command or group prerequisites", () => {
     // Arrange
     const workflow: RunnerConfig = {
       packages: {
@@ -47,11 +47,70 @@ describe("graph compilation", () => {
     const graph = compileGraph(workflow, "mutation", workflowScripts);
 
     // Assert
-    expect(graph.keys().toArray()).toEqual(["prepare", "setup", "mutation"]);
-    expect(graph.get(taskReference(".", "mutation"))?.dependsOn).toEqual([
-      taskReference(".", "setup"),
-    ]);
+    expect(graph.keys().toArray()).toEqual(["mutation"]);
+    expect(graph.get(taskReference(".", "mutation"))?.dependsOn).toEqual([]);
   });
+
+  it.each([
+    { members: ["lib#mutation", "app#mutation"], target: "mutation" },
+    { members: ["app#mutation"], target: "mutation:app" },
+    { members: ["app#mutation"], target: "app#mutation" },
+  ])(
+    "starts $target without earlier tests or builds",
+    ({ members, target }) => {
+      // Arrange
+      const workflow: RunnerConfig = {
+        packages: {
+          ".": {
+            mutation: { dependsOn: ["mutation:lib", "mutation:app"] },
+            "mutation:app": { dependsOn: ["app#mutation"] },
+            "mutation:lib": { dependsOn: ["lib#mutation"] },
+          },
+          app: {
+            build: { dependsOn: ["compile"] },
+            compile: { run: { command: "compile", kind: "shell" } },
+            mutation: {
+              dependsOn: ["test", "build", "lib#mutation"],
+              run: { command: "mutation", kind: "shell" },
+            },
+            test: { run: { command: "test", kind: "shell" } },
+          },
+          lib: {
+            mutation: {
+              dependsOn: ["test"],
+              run: { command: "mutation", kind: "shell" },
+            },
+            test: { run: { command: "test", kind: "shell" } },
+          },
+        },
+        version: 2,
+      };
+      const manifests = new Map([
+        [".", {}],
+        ["app", {}],
+        ["lib", {}],
+      ]);
+
+      // Act
+      const graph = compileGraph(workflow, target, manifests);
+
+      // Assert
+      expect(
+        graph
+          .values()
+          .filter((task) => task.run !== undefined)
+          .map((task) => task.id)
+          .toArray(),
+      ).toEqual(members);
+      expect(graph.get(taskReference("app", "mutation"))?.dependsOn).toEqual(
+        target === "mutation" ? [taskReference("lib", "mutation")] : [],
+      );
+      expect(graph.keys().toArray()).not.toContain("app#build");
+      expect(
+        graph.get(taskReference("lib", "mutation"))?.dependsOn ?? [],
+      ).toEqual([]);
+    },
+  );
 
   it("keeps command ordering when an aggregate selects both commands", () => {
     // Arrange
