@@ -21,6 +21,8 @@ presets, and a JSON schema.
 
 - `npm test` runs source-level unit tests.
 - `npm run build` produces the compiled distribution.
+- `npm run docs` generates HTML API documentation for the package and presets
+  under `docs/api/`.
 - `npm run e2e` tests the compiled distribution and isolated consumers; build
   first. Packaging tests skip lifecycle scripts so they inspect that build
   without replacing it during the suite.
@@ -42,7 +44,7 @@ Put `task-runner.json` at the repository root:
         "run": { "kind": "npm", "script": "test" }
       },
       "docs": { "run": { "kind": "npm", "script": "docs", "optional": true } },
-      "check": { "dependsOn": ["test", "docs"] }
+      "check": { "dependsOn": ["compile", "test", "docs"] }
     }
   }
 }
@@ -70,12 +72,16 @@ dependency such as `compile` refers to the same package. Use
 `packages/lib#build` for another package or `.#build` for the root.
 The `#` separator is reserved in package paths and task names.
 Commandless tasks provide groups and aliases; any task is directly invocable.
-Directly invoking a command starts at that command and skips its direct command
-prerequisites, so you can rerun a later step without repeating an earlier one.
-Invoking a group expands all prerequisites and preserves their ordering. For
-example, `task-runner run mutation` skips `test`, while `task-runner run test:all`
-runs `test` before `mutation`. Generated configuration omits empty dependency
-lists. Version 1 is not supported.
+Invoking a command starts at that command without pulling in earlier steps.
+Groups recursively select the members listed in their `dependsOn`, stopping at
+commands. Command dependencies only order tasks already selected.
+For example, `task-runner run mutation` and `task-runner run mutation:back`
+skip `test`, including through workspace groups and aliases. Dependencies
+between selected mutation tasks are still respected. A `test:all` group that
+explicitly lists both `test` and `mutation` runs `test` first.
+Groups must list every intended command: a build pipeline lists `clean`,
+`compile`, and `resolve-paths`, not just its final step.
+Generated configuration omits empty dependency lists. Version 1 is not supported.
 Invoking from a workspace selects that package's task without accidentally
 selecting a root aggregate. Nested
 directories select their nearest containing configured package.
@@ -118,9 +124,11 @@ Monorepo validation shows root lint once, then `validate:<workspace>` groups
 containing each workspace's build, pack, docs, typecheck, and test checks.
 These groups are also available as root CLI/npm entrypoints; package-local
 `validate` retains its local lint checks. Shared prerequisites still run once.
-Subtask labels omit the package prefix already identified by their containing
-group, at every nesting level. Cross-package groups remain qualified at the
-boundary, then establish context for their own children.
+Cross-workspace command labels use `<package-suffix>:<task>` when the suffix is
+unique, such as `automation:mutation`; ambiguous suffixes use the full package
+path. Subtasks omit that qualifier when their containing group establishes the
+package context. Failure and cancellation messages use the same labels, while
+event data and log paths retain full package paths.
 
 `compileGraph` and `executeGraph` also support an injected command executor for
 non-process integrations. Library calls return results or propagate boundary
@@ -130,8 +138,8 @@ errors; they never set process exit status or install global signal handlers.
 
 - Validate all definitions before execution, including required scripts and cycles.
 - Execute shared tasks once per invocation, with one global leaf-command limit.
-- Documentation waits for its package build; root monorepo docs wait for all
-  workspace builds so generated package exports are available.
+- During validation, documentation waits for selected builds so generated
+  package exports are available. Running docs or pack alone does not build.
 - Default concurrency is available CPUs minus one, with a minimum of one.
   `--concurrency N` selects a positive integer limit. Non-empty `CI` or `--ci`
   defaults to sequential commands and streams output; an explicit limit wins.

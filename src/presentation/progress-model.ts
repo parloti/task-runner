@@ -29,6 +29,7 @@ export class ProgressModel {
   private readonly events = new Map<TaskId, TaskEvent>();
   private readonly groupDescendants = new Map<TaskId, Set<TaskId>>();
   private readonly groupDurations = new Map<TaskId, number>();
+  private readonly packagePaths: readonly string[];
   private readonly rows: ProgressRow[] = [];
   private readonly started = new Map<TaskId, number>();
 
@@ -36,7 +37,13 @@ export class ProgressModel {
     graph: ReadonlyMap<TaskId, CompiledTask>,
     target: string,
     private readonly collapse = true,
+    packagePaths?: readonly string[],
   ) {
+    this.packagePaths =
+      packagePaths ??
+      new Set(graph.values().map(({ package: packagePath }) => packagePath))
+        .values()
+        .toArray();
     const root = graph.values().find((task) => task.id === target);
     if (root === undefined)
       throw new Error(`Missing progress target: ${target}`);
@@ -248,7 +255,7 @@ export class ProgressModel {
           : liveMarkers[status];
     if (appearance?.color)
       marker = styleText(colors[status], marker, { validateStream: false });
-    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope)} (${status}${duration === undefined ? "" : `, ${(duration / 1000).toFixed(1)}s`})`;
+    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope, this.packagePaths)} (${status}${duration === undefined ? "" : `, ${(duration / 1000).toFixed(1)}s`})`;
   }
 
   private status(row: ProgressRow): TaskStatus {

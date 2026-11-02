@@ -1,22 +1,22 @@
 # Architecture
 
-| Component            | Ownership                                              | Dependencies                          |
-| -------------------- | ------------------------------------------------------ | ------------------------------------- |
-| `src/domain`         | Task/config/event contracts and pure graph compilation | `ts-brand`                            |
-| `src/application`    | Scheduler, executor port, and run options              | Domain                                |
-| `src/infrastructure` | Config/manifests, processes, npm discovery             | Domain and Node                       |
-| `src/presentation`   | CLI arguments, nested progress view, terminal redraw   | Application, domain, Node, log-update |
-| `src/bootstrap`      | Runtime composition, logging, signals, executable      | All layers                            |
-| `src/presets`        | Optional pure workflow construction                    | Domain contracts                      |
-| `tests/e2e`          | Real subprocess and consumer behavior                  | Public/runtime boundaries             |
+| Component            | Ownership                                                               | Dependencies                          |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------------------- |
+| `src/domain`         | Task/config/event contracts, graph compilation, and readable task names | `ts-brand`                            |
+| `src/application`    | Scheduler, executor port, and run options                               | Domain                                |
+| `src/infrastructure` | Config/manifests, processes, npm discovery                              | Domain and Node                       |
+| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                    | Application, domain, Node, log-update |
+| `src/bootstrap`      | Runtime composition, logging, signals, executable                       | All layers                            |
+| `src/presets`        | Optional pure workflow construction                                     | Domain contracts                      |
+| `tests/e2e`          | Real subprocess and consumer behavior                                   | Public/runtime boundaries             |
 
 - Version-2 package-local JSON is validated at the IO boundary. Graph compilation
   resolves local/qualified references into one graph with canonical readable IDs
   (root names or `<package>#<task>`). No serialized arrays or entrypoint map.
 - Graph task IDs become nominal `TaskId` values after reference validation.
-- Graph selection expands group prerequisites. A directly invoked command omits
-  its direct command prerequisites, while retaining group prerequisites; those
-  command edges order tasks when an aggregate selects both commands.
+- Graph selection recursively expands commandless groups but stops at commands.
+  After selection, command dependencies are retained only when their targets
+  are selected. Groups explicitly list their members; aliases use the same rule.
 - A single scheduler admits ready leaf commands and owns cancellation/state.
 - Process adapters implement npm/shell execution, tree termination, and streams.
 - Domain execution errors distinguish expected command failure/cancellation.
@@ -24,6 +24,10 @@
   error diagnostics. Infrastructure owns safe timestamp/task/PID log paths;
   bootstrap clears stale logs only when no other invocation is active and keeps
   UUID-correlated event streams separate in the shared log folder.
+- `qualifiedTaskName` derives a unique package suffix from configured package
+  paths and falls back to the full path on collisions. Bootstrap supplies those
+  paths to the process adapter and CLI progress display; event identities and
+  log paths retain full package paths.
 - CLI progress and library subscribers receive the same scheduler events.
 - `onPlan` delivers the selected validated graph before execution; `onEvent`
   delivers state transitions. The presentation-only view deduplicates shared

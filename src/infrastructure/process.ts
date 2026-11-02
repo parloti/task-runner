@@ -6,7 +6,11 @@ import { stripVTControlCharacters } from "node:util";
 
 import type { ExecuteCommand } from "../domain";
 
-import { CommandFailedError, TaskCancelledError, taskName } from "../domain";
+import {
+  CommandFailedError,
+  qualifiedTaskName,
+  TaskCancelledError,
+} from "../domain";
 import { taskLogPath } from "./task-log";
 
 /**
@@ -14,16 +18,21 @@ import { taskLogPath } from "./task-log";
  * @param root Absolute project root used as the package path base.
  * @param runDirectory Directory for per-task output logs.
  * @param ci Whether output streams directly to the terminal.
+ * @param packagePaths All configured package paths.
  * @returns Command executor for the application scheduler.
- * @example `createProcessExecutor(root, logs, false)` captures output in task logs.
+ * @example `createProcessExecutor(root, logs, false, [".", "apps/web"])` captures output in task logs.
  */
 export function createProcessExecutor(
   root: string,
   runDirectory: string,
   ci: boolean,
+  packagePaths: readonly string[] = [],
 ): ExecuteCommand {
   return async (task, signal) => {
-    if (isAborted(signal)) throw new TaskCancelledError(taskName(task));
+    const label = stripVTControlCharacters(
+      qualifiedTaskName(task, packagePaths),
+    ).replaceAll(/[\p{Cc}\p{Cf}]/gu, " ");
+    if (isAborted(signal)) throw new TaskCancelledError(label);
     const command = task.run;
     if (command === undefined) throw new Error(`Missing command: ${task.id}`);
     const file = command.kind === "npm" ? process.execPath : command.command;
@@ -37,11 +46,6 @@ export function createProcessExecutor(
           ]
         : [];
     const logPath = taskLogPath(runDirectory, task);
-    const label = stripVTControlCharacters(
-      task.package === "."
-        ? taskName(task)
-        : `${task.package} > ${taskName(task)}`,
-    ).replaceAll(/[\p{Cc}\p{Cf}]/gu, " ");
     const child = spawn(file, args, {
       cwd: path.resolve(root, task.package),
       detached: process.platform !== "win32",

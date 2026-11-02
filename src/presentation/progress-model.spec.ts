@@ -247,8 +247,8 @@ describe("nested progress model", () => {
       [
         ". validate:automation (pending)",
         "  . build (pending)",
-        "    . packages/api-contract > build (pending)",
-        "      . packages/utils > build (pending)",
+        "    . api-contract:build (pending)",
+        "      . utils:build (pending)",
         "        . utility-compile (pending)",
         "      . clean (pending)",
         "      . compile (pending)",
@@ -256,7 +256,7 @@ describe("nested progress model", () => {
         "    . app-compile (pending)",
       ].join("\n"),
     );
-    expect(direct).toContain(". packages/api-contract > build (pending)");
+    expect(direct).toContain(". api-contract:build (pending)");
     expect(direct).toContain("  . clean (pending)");
     expect(model.eventLine(event("clean", "running"))).toBe(
       "      | clean (running, 13.6s)",
@@ -283,7 +283,7 @@ describe("nested progress model", () => {
     expect(frame).toContain("validate:automation (pending)");
     expect(frame).toContain("  ! test:all (blocked, 107.2s)");
     expect(frame).toContain("    . test (pending)");
-    expect(frame).toContain("    . packages/lib > shared (pending)");
+    expect(frame).toContain("    . lib:shared (pending)");
     expect(model.eventLine(event(tests, "blocked"))).toBe(
       "  ! test:all (blocked, 107.2s)",
     );

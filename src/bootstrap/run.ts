@@ -41,12 +41,13 @@ export async function runTasks(
   const target = taskReference(packagePath, entrypoint);
   const scripts = loadScripts(config, root);
   const graph = compileGraph(config, target, scripts);
+  const packagePaths = Object.keys(config.packages);
   const ci = Boolean(process.env["CI"]) || options.ci === true;
   const concurrency =
     options.concurrency ?? (ci ? 1 : Math.max(1, availableParallelism() - 1));
   if (!Number.isSafeInteger(concurrency) || concurrency < 1)
     throw new Error("Concurrency must be a positive integer");
-  options.onPlan?.(graph, target);
+  options.onPlan?.(graph, target, packagePaths);
   const runId = randomUUID();
   const { directory, release } = await prepareRunLogDirectory(root, runId);
   const onEvent = (event: TaskEvent): void => {
@@ -67,7 +68,7 @@ export async function runTasks(
   try {
     result = await executeGraph(
       graph,
-      createProcessExecutor(root, directory, ci),
+      createProcessExecutor(root, directory, ci, packagePaths),
       {
         concurrency,
         onEvent,

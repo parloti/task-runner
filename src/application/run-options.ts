@@ -9,6 +9,7 @@ export interface RunOptions {
   readonly onPlan?: (
     graph: ReadonlyMap<TaskId, CompiledTask>,
     target: string,
+    packagePaths: readonly string[],
   ) => void;
   readonly package?: string;
   readonly signal?: AbortSignal;
