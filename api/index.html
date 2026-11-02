@@ -1,0 +1,195 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@codeperfect/task-runner</title><meta name="description" content="Documentation for @codeperfect/task-runner"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="index.html" class="title">@codeperfect/task-runner</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<h1>@codeperfect/task-runner</h1></div>
+<div class="tsd-panel tsd-typography"><h1 id="task-runner" class="tsd-anchor-link">Task Runner<a href="#task-runner" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<p>A dependency-aware npm-script runner with a compiled CLI and reusable library.
+Requires Node.js 24 or newer. No Workspaces Manager or runtime TypeScript loader
+is required.
+Local development preparation installs a source CLI shim; packed consumers use
+the compiled executable without running that development-only setup.</p>
+<h2 id="install" class="tsd-anchor-link">Install<a href="#install" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Install the CLI and library as a development dependency:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-3">--save-dev</span><span class="hl-1"> </span><span class="hl-2">@codeperfect/task-runner</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The package provides the <code>task-runner</code> command, a TypeScript library, workspace
+presets, and a JSON schema.</p>
+<h2 id="validation" class="tsd-anchor-link">Validation<a href="#validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li><code>npm test</code> runs source-level unit tests.</li>
+<li><code>npm run build</code> produces the compiled distribution.</li>
+<li><code>npm run docs</code> generates HTML API documentation for the package and presets
+under <code>docs/api/</code>.</li>
+<li><code>npm run e2e</code> tests the compiled distribution and isolated consumers; build
+first. Packaging tests skip lifecycle scripts so they inspect that build
+without replacing it during the suite.</li>
+<li><code>npm run validate -- --concurrency 1</code> runs the complete workflow serially,
+including build before E2E.</li>
+</ul>
+<h2 id="configuration" class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Put <code>task-runner.json</code> at the repository root:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;version&quot;</span><span class="hl-1">: </span><span class="hl-5">2</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;packages&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;.&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;compile&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;test&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-4">&quot;dependsOn&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">        </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1"> }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;docs&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;docs&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;optional&quot;</span><span class="hl-1">: </span><span class="hl-3">true</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;check&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;dependsOn&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;docs&quot;</span><span class="hl-1">] }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Keep <code>compile</code> and <code>test</code> as ordinary npm scripts; add
+<code>&quot;check&quot;: &quot;task-runner run check&quot;</code> to <code>package.json</code>. Task references are explicit,
+not inferred from shell text. Use <code>{ &quot;kind&quot;: &quot;shell&quot;, &quot;command&quot;: &quot;...&quot; }</code> for an
+intentional platform-specific shell command. npm tasks accept an <code>args</code> array,
+forwarded after <code>npm run &lt;script&gt; --</code>, and preserve npm lifecycle hooks.</p>
+<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Package keys are relative paths using <code>/</code>, or <code>.</code> for the root. Each package
+maps local task names directly to definitions; there is no <code>tasks</code> wrapper or
+entrypoint mapping. A bare
+dependency such as <code>compile</code> refers to the same package. Use
+<code>packages/lib#build</code> for another package or <code>.#build</code> for the root.
+The <code>#</code> separator is reserved in package paths and task names.
+Commandless tasks provide groups and aliases; any task is directly invocable.
+Invoking a command starts at that command without pulling in earlier steps.
+Groups recursively select the members listed in their <code>dependsOn</code>, stopping at
+commands. Command dependencies only order tasks already selected.
+For example, <code>task-runner run mutation</code> and <code>task-runner run mutation:back</code>
+skip <code>test</code>, including through workspace groups and aliases. Dependencies
+between selected mutation tasks are still respected. A <code>test:all</code> group that
+explicitly lists both <code>test</code> and <code>mutation</code> runs <code>test</code> first.
+Groups must list every intended command: a build pipeline lists <code>clean</code>,
+<code>compile</code>, and <code>resolve-paths</code>, not just its final step.
+Generated configuration omits empty dependency lists. Version 1 is not supported.
+Invoking from a workspace selects that package's task without accidentally
+selecting a root aggregate. Nested
+directories select their nearest containing configured package.
+<code>--config &lt;path&gt;</code> and <code>--package &lt;relative-path&gt;</code> override discovery/selection.
+The schema is exported as <code>@codeperfect/task-runner/schema.json</code>.</p>
+<h2 id="library-and-presets" class="tsd-anchor-link">Library and presets<a href="#library-and-presets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="typescript"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">runTasks</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">createWorkspacePreset</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner/presets&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">runTasks</span><span class="hl-1">(</span><span class="hl-2">&quot;check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-7">cwd:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/repository&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">signal:</span><span class="hl-1"> </span><span class="hl-7">abortController</span><span class="hl-1">.</span><span class="hl-7">signal</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">onEvent</span><span class="hl-7">:</span><span class="hl-1"> (</span><span class="hl-7">event</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-7">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">status</span><span class="hl-1">, </span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">taskId</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">preset</span><span class="hl-1"> = </span><span class="hl-0">createWorkspacePreset</span><span class="hl-1">([</span><br/><span class="hl-1">  { </span><span class="hl-7">path:</span><span class="hl-1"> </span><span class="hl-2">&quot;.&quot;</span><span class="hl-1">, </span><span class="hl-7">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;root&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-7">path:</span><span class="hl-1"> </span><span class="hl-2">&quot;packages/lib&quot;</span><span class="hl-1">, </span><span class="hl-7">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;@example/lib&quot;</span><span class="hl-1">, </span><span class="hl-7">utility:</span><span class="hl-1"> </span><span class="hl-3">true</span><span class="hl-1"> },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-7">path:</span><span class="hl-1"> </span><span class="hl-2">&quot;apps/web&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;web&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">angular:</span><span class="hl-1"> </span><span class="hl-3">true</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">internalDependencies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;@example/lib&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">]);</span><br/><span class="hl-9">// Write preset.config and merge preset.scripts into the corresponding manifests.</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Generated preset configs include a <code>$comment</code> warning that the file is
+autogenerated and manual edits will be overwritten. It remains valid JSON and
+is accepted by the task-runner parser and schema.</p>
+<p>Presets leave repository-specific lifecycle hooks such as <code>prepare</code> untouched.
+Package <code>pack</code> is a normal npm command depending on <code>build</code>, with no separate
+<code>pack:artifact</code> task. Root monorepo <code>pack</code> aggregates the workspace pack tasks.
+Monorepo validation shows root lint once, then <code>validate:&lt;workspace&gt;</code> groups
+containing each workspace's build, pack, docs, typecheck, and test checks.
+These groups are also available as root CLI/npm entrypoints; package-local
+<code>validate</code> retains its local lint checks. Shared prerequisites still run once.
+Cross-workspace command labels use <code>&lt;package-suffix&gt;:&lt;task&gt;</code> when the suffix is
+unique, such as <code>automation:mutation</code>; ambiguous suffixes use the full package
+path. Subtasks omit that qualifier when their containing group establishes the
+package context. Failure and cancellation messages use the same labels, while
+event data and log paths retain full package paths.</p>
+<p><code>compileGraph</code> and <code>executeGraph</code> also support an injected command executor for
+non-process integrations. Library calls return results or propagate boundary
+errors; they never set process exit status or install global signal handlers.</p>
+<h2 id="runtime-behavior" class="tsd-anchor-link">Runtime behavior<a href="#runtime-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li>Validate all definitions before execution, including required scripts and cycles.</li>
+<li>Execute shared tasks once per invocation, with one global leaf-command limit.</li>
+<li>During validation, documentation waits for selected builds so generated
+package exports are available. Running docs or pack alone does not build.</li>
+<li>Default concurrency is available CPUs minus one, with a minimum of one.
+<code>--concurrency N</code> selects a positive integer limit. Non-empty <code>CI</code> or <code>--ci</code>
+defaults to sequential commands and streams output; an explicit limit wins.</li>
+<li>On failure, stop admission, block dependents, cancel owned active processes,
+and wait for cleanup. Windows cancellation terminates the owned tree;
+POSIX cancellation escalates from SIGTERM to SIGKILL.</li>
+<li>Interactive terminals show nested groups with animated running tasks,
+durations, readable package labels, and distinct waiting/ready/success/failure/
+skipped/blocked/cancelled states. Unstarted and successful groups collapse by
+default; groups expand when their subtree starts, while nested unstarted
+groups remain collapsed. Failed, blocked, and cancelled groups stay expanded;
+<code>--collapse false</code> keeps their subtasks visible (<code>--collapse true</code> re-enables
+collapsing). This option does not affect execution or plain CI output.</li>
+<li>Groups stay pending until work in their displayed subtree starts. Shared
+dependencies displayed elsewhere do not activate waiting workspaces or later
+phases such as pack and test:all. Group timers start with their subtree's first
+work and stop when the group finishes, without summing overlapping durations.</li>
+<li>Live status icons are colored: cyan running spinner, green success, red
+failure, yellow ready/blocked, magenta cancelled, and gray pending/skipped.
+Set <code>NO_COLOR</code> or <code>FORCE_COLOR=0</code> to disable colors without losing state icons.</li>
+<li>Shared prerequisites appear once. Workspace tasks belong to their matching
+validation group when it is included; otherwise their first containing group
+owns the display. Empty cross-package aggregate wrappers are omitted.
+Display ownership never changes execution order or concurrency.</li>
+<li><code>--max-tasks N</code> caps interactive task rows at a positive integer, default 100,
+excluding the omitted-task summary. Live redraw fits the terminal viewport;
+the final listing is preserved in scrollback up to the configured cap.
+<code>--collapse false</code> retains completed children in the final listing after
+success, failure, or cancellation, regardless of terminal height.</li>
+<li>CI, redirected output, and <code>TERM=dumb</code> use concise non-animated progress.
+Full transitions remain in JSONL. Animation stops before final diagnostics.
+Rendering uses <code>log-update</code>, not Listr2 or a second task scheduler.</li>
+<li>Scrolling is enabled by default. <code>--no-scroll</code> disables the alternate-screen
+live view, and <code>--scroll</code> remains accepted. Use Up/Down, Page Up/Down, Home/End,
+or the mouse wheel
+where SGR mouse reporting is supported (such as compatible Git Bash terminals).
+A pinned header shows the command; the footer shows the visible line range.
+Both disappear when the view closes. npm scripts show <code>npm run &lt;script&gt;</code>
+with forwarded arguments; direct calls show <code>task-runner</code> and its arguments.
+Shell quoting is reconstructed, not recovered from shell history.
+Blank rows separate tasks from the header and footer. The two-line footer
+shows task counts by status, then the line range/navigation controls.
+Counts include only unique command tasks throughout the plan, regardless of
+collapse, scrolling, or the display limit; groups are excluded and zero-count
+statuses are omitted. Running counts reflect the global command limit, not
+group spinners, which indicate started work in their displayed subtree.
+Long headers wrap, bounded to leave task space; tiny terminals omit the
+header, spacing, or counts as needed. Ctrl+C cancels the run normally.
+On completion or failure the normal screen/input modes are restored and the
+final tree is printed into scrollback, with a blank line above and below it.
+Terminal scrollbars/Shift+wheel are not
+the live viewport controls. Scrolling activates only with TTY stdin; CI,
+redirected output, and dumb terminals retain plain output.</li>
+<li>Logs use <code>logs/task-runner/&lt;pid&gt;/&lt;workspace-task&gt;-&lt;timestamp&gt;.log</code>, with
+filename-safe names and timestamps. Successful/cancelled output logs are
+removed after cleanup. Failed commands print a readable task name and relative
+log path without runner stacks; cancellation adds no error diagnostic.
+Unexpected runner/cleanup failures still surface normally.
+After success, failure, or cancellation, a persistent task-status summary
+follows any failure/log messages, including in plain/CI output. It uses the
+same command-only counts as the live footer and ends with the completion
+timestamp in ISO 8601 UTC format (<code>| Finished at: &lt;timestamp&gt;</code>).
+Structured events remain in separate <code>events-&lt;run-id&gt;.jsonl</code> files per invocation.
+Command output may contain sensitive tool output; treat retained logs accordingly.</li>
+</ul>
+<p>See the <a href="https://github.com/parloti/task-runner/blob/main/.specs/SPEC.md">behavior specification</a>
+and <a href="https://github.com/parloti/task-runner/blob/main/.specs/ARCHITECTURE.md">architecture guide</a>.
+For local setup and pull request guidance, see
+<a href="https://github.com/parloti/task-runner/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+</div></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details"><a href="#task-runner"><span>Task <wbr/>Runner</span></a>
+<ul>
+<li><a href="#install"><span>Install</span></a></li>
+<li><a href="#validation"><span>Validation</span></a></li>
+<li><a href="#configuration"><span>Configuration</span></a></li>
+<li><a href="#library-and-presets"><span>Library and presets</span></a></li>
+<li><a href="#runtime-behavior"><span>Runtime behavior</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="modules.html">@codeperfect/task-runner</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>
