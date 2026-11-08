@@ -23,9 +23,11 @@ presets, and a JSON schema.
 - `npm run build` produces the compiled distribution.
 - `npm run docs` generates HTML API documentation for the package and presets
   under `docs/api/`.
-- `npm run e2e` tests the compiled distribution and isolated consumers; build
-  first. Packaging tests skip lifecycle scripts so they inspect that build
-  without replacing it during the suite.
+- `npm run e2e` tests runtime behavior and isolated consumers. Packaging tests
+  build a temporary copy and skip packing/install lifecycle scripts, so they
+  do not depend on the repository's `dist` during concurrent validation.
+- `npm run validate` runs the complete workflow with independent tasks in
+  parallel.
 - `npm run validate -- --concurrency 1` runs the complete workflow serially,
   including build before E2E.
 

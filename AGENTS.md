@@ -32,5 +32,8 @@
 - `npm test` runs tests. `npm run validate` is the full gate. Releases publish
   `@codeperfect/task-runner` through semantic-release on `main`; never publish
   manually. Keep the `task-runner` bin and keep pack archives out of `files`.
+- E2E tests must tolerate concurrent validation: use source or isolated builds,
+  not the repository's `dist`. Retry transient Windows fixture-cleanup errors
+  with bounded retries and preserve subprocess failures if cleanup also fails.
 - Current contracts: [.specs/SPEC.md](.specs/SPEC.md).
 - Current structure: [.specs/ARCHITECTURE.md](.specs/ARCHITECTURE.md).

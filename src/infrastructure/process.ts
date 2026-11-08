@@ -55,10 +55,12 @@ export function createProcessExecutor(
     });
     const log = ci ? undefined : createWriteStream(logPath, { flags: "wx" });
     let termination: Promise<void> | undefined;
+    const terminationFailure = Promise.withResolvers<never>();
     const cancel = (): void => {
       termination ??= terminate(child);
-      // Keep cancellation rejection observed until the main cleanup awaits it.
-      void termination.catch(() => false);
+      void termination.catch(() => {
+        terminationFailure.reject(new TaskCancelledError(label));
+      });
     };
     signal.addEventListener("abort", cancel, { once: true });
     const closed = new Promise<null | number>((resolve, reject) => {
@@ -74,7 +76,10 @@ export function createProcessExecutor(
     }
     const streamDone = log === undefined ? Promise.resolve() : finished(log);
     try {
-      const [code] = await Promise.all([closed, streamDone]);
+      const [code] = await Promise.race([
+        Promise.all([closed, streamDone]),
+        terminationFailure.promise,
+      ]);
       if (isAborted(signal)) throw new TaskCancelledError(label);
       if (code !== 0)
         throw new CommandFailedError(
@@ -86,16 +91,20 @@ export function createProcessExecutor(
     } catch (error) {
       cancel();
       log?.destroy();
-      await Promise.allSettled([closed, streamDone]);
       try {
         await termination;
       } catch (cleanupError) {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        child.unref();
+        await Promise.allSettled([streamDone]);
         throw new AggregateError(
           [error, cleanupError],
           `Task and cleanup failed: ${task.id}`,
           { cause: cleanupError },
         );
       }
+      await Promise.allSettled([closed, streamDone]);
       if (!ci && error instanceof TaskCancelledError) rmSync(logPath);
       throw error;
     } finally {

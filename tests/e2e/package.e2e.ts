@@ -6,10 +6,10 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,7 +34,7 @@ const isolatedEnvironment = (): NodeJS.ProcessEnv => {
 };
 
 describe("packed distribution", () => {
-  it("installs offline into a clean consumer and resolves only compiled bin/library/presets", () => {
+  it("installs offline into a clean consumer and resolves only compiled bin/library/presets", async () => {
     // Arrange
     const directory = mkdtempSync(path.join(os.tmpdir(), "runner-package-"));
     const artifacts = path.join(directory, "artifacts");
@@ -91,105 +91,92 @@ describe("packed distribution", () => {
         version: 2,
       }),
     );
-    const invoke = (args: string[], cwd = consumer) =>
-      spawnSync(process.execPath, args, {
+    const invoke = (args: string[], cwd = consumer) => {
+      const result = spawnSync(process.execPath, args, {
         cwd,
         encoding: "utf8",
         env: isolatedEnvironment(),
-        timeout: 60_000,
+        timeout: 120_000,
         windowsHide: true,
       });
+      assert.equal(
+        result.status,
+        0,
+        `${args.join(" ")} in ${cwd}\n${result.error?.message ?? ""}\n${result.stdout}\n${result.stderr}`,
+      );
+      return result;
+    };
+    let failure: Error | undefined;
     try {
       // Act
-      const built = invoke([npm, "run", "build"], packageRoot);
-      if (built.status === 0)
-        writeFileSync(path.join(packageRoot, "dist", "previous.tgz"), "");
-      const packed =
-        built.status === 0
-          ? invoke(
-              [
-                npm,
-                "pack",
-                "--json",
-                "--ignore-scripts",
-                "--pack-destination",
-                artifacts,
-              ],
-              packageRoot,
-            )
-          : built;
-      const manifest =
-        packed.status === 0
-          ? (
-              JSON.parse(packed.stdout) as {
-                filename: string;
-                files: { path: string }[];
-              }[]
-            )[0]
-          : undefined;
-      const filename = manifest?.filename;
-      const archive = filename ? path.join(artifacts, filename) : artifacts;
+      invoke([npm, "run", "build"], packageRoot);
+      writeFileSync(path.join(packageRoot, "dist", "previous.tgz"), "");
+      const packed = invoke(
+        [
+          npm,
+          "pack",
+          "--json",
+          "--ignore-scripts",
+          "--pack-destination",
+          artifacts,
+        ],
+        packageRoot,
+      );
+      const manifest = (
+        JSON.parse(packed.stdout) as {
+          filename: string;
+          files: { path: string }[];
+        }[]
+      )[0];
+      assert.ok(manifest, "npm pack must report an archive");
+      const archive = path.join(artifacts, manifest.filename);
       // Resolve dependencies online once to create the consumer lockfile and
       // prime npm's cache. The clean install below must then work offline.
-      const prepared =
-        packed.status === 0
-          ? invoke([
-              npm,
-              "install",
-              "--ignore-scripts",
-              "--no-audit",
-              "--no-fund",
-              archive,
-            ])
-          : packed;
-      const installed =
-        prepared.status === 0
-          ? invoke([
-              npm,
-              "ci",
-              "--offline",
-              "--ignore-scripts",
-              "--no-audit",
-              "--no-fund",
-            ])
-          : prepared;
-      const cli =
-        installed.status === 0
-          ? invoke([
-              npm,
-              "run",
-              "check",
-              "--",
-              "--ci",
-              "--collapse",
-              "false",
-              "--concurrency",
-              "2",
-            ])
-          : installed;
-      const library =
-        installed.status === 0
-          ? invoke([
-              "--input-type=module",
-              "-e",
-              `
+      invoke([
+        npm,
+        "install",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        archive,
+      ]);
+      invoke([
+        npm,
+        "ci",
+        "--offline",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+      ]);
+      const cli = invoke([
+        npm,
+        "run",
+        "check",
+        "--",
+        "--ci",
+        "--collapse",
+        "false",
+        "--concurrency",
+        "2",
+      ]);
+      const library = invoke([
+        "--input-type=module",
+        "-e",
+        `
         import {runTasks} from "@codeperfect/task-runner";
         import {createWorkspacePreset} from "@codeperfect/task-runner/presets";
         const result = await runTasks("check");
         const preset = createWorkspacePreset([{path:".",name:"consumer",utility:true}]);
         console.log(JSON.stringify({success:result.success,build:preset.scripts["."].build}));
       `,
-            ])
-          : installed;
+      ]);
       // Assert
-      assert.equal(packed.status, 0, packed.stderr);
-      expect(manifest?.files.map((file) => file.path)).toContain(
+      expect(manifest.files.map((file) => file.path)).toContain(
         "dist/bootstrap/cli.js",
       );
       expect(
-        manifest?.files.filter((file) => file.path.endsWith(".tgz")),
+        manifest.files.filter((file) => file.path.endsWith(".tgz")),
       ).toEqual([]);
-      assert.equal(installed.status, 0, installed.stderr);
       expect(
         existsSync(
           path.join(
@@ -200,7 +187,6 @@ describe("packed distribution", () => {
           ),
         ),
       ).toBe(true);
-      assert.equal(cli.status, 0, cli.stderr);
       expect(cli.stderr).toContain("leaf (running");
       expect(cli.stderr).toMatch(/build \(succeeded, \d+\.\ds\)/);
       expect(cli.stderr).toContain("docs (skipped)");
@@ -210,7 +196,6 @@ describe("packed distribution", () => {
       expect(cli.stderr).toMatch(
         /Tasks: 2 \| succeeded: 1 \| skipped: 1 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\r?\n\r?\n$/,
       );
-      assert.equal(library.status, 0, library.stderr);
       expect(library.stdout).toContain('"success":true');
       expect(library.stdout).toContain('"build":"task-runner run build"');
       expect(
@@ -247,8 +232,29 @@ describe("packed distribution", () => {
           ),
         ),
       ).toBe(true);
-    } finally {
-      rmSync(directory, { force: true, recursive: true });
+    } catch (error) {
+      failure =
+        error instanceof Error
+          ? error
+          : new Error("Package test failed", { cause: error });
     }
-  }, 90_000);
+    try {
+      // Windows can briefly retain handles after a subprocess exits.
+      await rm(directory, {
+        force: true,
+        maxRetries: 10,
+        recursive: true,
+        retryDelay: 100,
+      });
+    } catch (cleanupError) {
+      if (failure !== undefined)
+        throw new AggregateError(
+          [failure, cleanupError],
+          `Package test and cleanup failed: ${directory}`,
+          { cause: cleanupError },
+        );
+      throw cleanupError;
+    }
+    if (failure !== undefined) throw failure;
+  }, 180_000);
 });

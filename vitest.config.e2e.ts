@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 const config = defineConfig({
+  cacheDir: "node_modules/.vitest/e2e",
   test: {
     clearMocks: true,
     coverage: {
@@ -8,13 +9,12 @@ const config = defineConfig({
       exclude: ["**/*.spec.ts"],
       include: ["src/**/*.ts"],
       reportsDirectory: "coverage/e2e",
-      thresholds: { branches: 15, functions: 15, lines: 15, statements: 15 },
+      thresholds: { branches: 20, functions: 20, lines: 20, statements: 20 },
     },
+    fsModuleCachePath: "node_modules/.vitest-cache/e2e",
     include: ["tests/e2e/**/*.e2e.ts"],
-    maxWorkers: "50%",
     mockReset: true,
     name: "task-runner-e2e",
-    pool: "threads",
     restoreMocks: true,
     setupFiles: ["vitest.setup.ts"],
     testTimeout: 60_000,

@@ -1,1 +1,8 @@
-npx --yes commitlint --edit "$1"
+npx --yes commitlint --edit "$1" || exit $?
+before_tree=$(git write-tree) || exit $?
+npx --yes tsx scripts/lint-staged.ts || exit $?
+after_tree=$(git write-tree) || exit $?
+if [ "$before_tree" != "$after_tree" ]; then
+  echo "lint-staged updated the staged files. Review the fixes and retry the commit." >&2
+  exit 1
+fi
