@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -221,6 +222,22 @@ describe("packed distribution", () => {
           ),
         ),
       ).toBe(true);
+      const installedPackageJson = JSON.parse(
+        readFileSync(
+          path.join(
+            consumer,
+            "node_modules",
+            "@codeperfect",
+            "task-runner",
+            "package.json",
+          ),
+          "utf8",
+        ),
+      ) as { exports: Record<string, unknown> };
+      expect(installedPackageJson.exports["."]).not.toHaveProperty("source");
+      expect(installedPackageJson.exports["./presets"]).not.toHaveProperty(
+        "source",
+      );
       expect(
         existsSync(
           path.join(
