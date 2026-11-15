@@ -153,10 +153,8 @@ describe("nested progress model", () => {
     const frame = model.frame(0);
     model.update(event("compile", "succeeded", 100));
     // Assert
-    expect(frame).toContain(". web:compile (pending)");
-    expect(model.eventLine(event("compile", "succeeded"))).toContain(
-      "compile (succeeded",
-    );
+    expect(frame).toContain(". web:compile");
+    expect(model.eventLine(event("compile", "succeeded"))).toContain("compile");
   });
   it("shows monorepo validation grouped by workspace with readable nested checks", () => {
     // Arrange
@@ -226,15 +224,15 @@ describe("nested progress model", () => {
     });
     // Assert
     expect(frame.split("\n").filter((line) => /^ {2}\S/.test(line))).toEqual([
-      "  . lint (pending)",
-      "  . validate:lib (pending)",
-      "  . validate:web (pending)",
-      "  . docs (pending)",
+      "  . lint",
+      "  . validate:lib",
+      "  . validate:web",
+      "  . docs",
     ]);
-    expect(frame).toContain("    . test:all (pending)");
+    expect(frame).toContain("    . test:all");
     expect(frame).not.toContain("web:");
     expect(frame).not.toContain("validation:[");
-    expect(frame.match(/clean \(pending\)/g)).toHaveLength(2);
+    expect(frame.match(/\. clean/g)).toHaveLength(2);
     expect(frame).not.toContain("apps/web:");
     expect(frame).not.toContain("packages/lib:");
   });
@@ -252,8 +250,7 @@ describe("nested progress model", () => {
       model.update(event("root", "succeeded", 100));
       // Assert
       expect(model.frame(0, { limit: 20 })).toBe(
-        "+ root (succeeded, 0.1s)" +
-          (collapse ? "" : "\n  + child (succeeded, 0.1s)"),
+        "+ root (0.1s)" + (collapse ? "" : "\n  + child (0.1s)"),
       );
     },
   );
@@ -272,14 +269,14 @@ describe("nested progress model", () => {
     vi.advanceTimersByTime(200);
     const webBuild = model.frame(0, { limit: 1000 });
     // Assert
-    expect(sharedBuild).toContain("| validate (running, 1.3s)");
-    expect(sharedBuild).toContain("| validate:lib (running, 1.3s)");
-    expect(sharedBuild).toContain(". validate:web (pending)");
-    expect(sharedBuild).toContain(". validate:back (pending)");
-    expect(sharedBuild).not.toMatch(/(?:pack|test:all) \(running/);
-    expect(webBuild).toContain("| validate:web (running, 0.2s)");
-    expect(webBuild).toContain(". validate:back (pending)");
-    expect(webBuild).not.toMatch(/(?:pack|test:all) \(running/);
+    expect(sharedBuild).toContain("| validate (1.3s)");
+    expect(sharedBuild).toContain("| validate:lib (1.3s)");
+    expect(sharedBuild).toContain(". validate:web");
+    expect(sharedBuild).toContain(". validate:back");
+    expect(sharedBuild).not.toMatch(/(?:pack|test:all) \(/);
+    expect(webBuild).toContain("| validate:web (0.2s)");
+    expect(webBuild).toContain(". validate:back");
+    expect(webBuild).not.toMatch(/(?:pack|test:all) \(/);
     expect(model.summary()).toContain("running: 1");
   });
 });

@@ -127,7 +127,7 @@ describe("executable CLI", () => {
       const output = vi
         .spyOn(process.stderr, "write")
         .mockImplementation((message) => {
-          if (outcome === "interrupt" && String(message).includes("(running"))
+          if (outcome === "interrupt" && String(message).includes("check ("))
             process.stdin.emit("data", Buffer.from("\u{3}"));
           return true;
         });
@@ -150,7 +150,7 @@ describe("executable CLI", () => {
         expect(calls.slice(restore + 1).join("")).not.toContain(
           "npm run check --",
         );
-        expect(calls.slice(restore + 1).join("")).toContain("check (");
+        expect(calls.slice(restore + 1).join("")).toContain("check");
         const status =
           outcome === "success"
             ? "succeeded"
@@ -237,7 +237,7 @@ describe("executable CLI", () => {
         expect(process.exitCode).toBe(0);
         expect(
           output.mock.calls.map(([text]) => String(text)).join(""),
-        ).toContain("(succeeded");
+        ).toContain("check");
         expect(timer).toHaveBeenCalledTimes(live ? 1 : 0);
         expect(cleanup).toHaveBeenCalledWith(
           live ? timer.mock.results.at(0)?.value : undefined,

@@ -77,9 +77,8 @@ describe("nested progress model", () => {
       const model = new ProgressModel(graphFor(task(name, [], false)), name);
       model.update(event(name, status, 1234));
       // Assert
-      expect(model.frame(0, { limit: 20 })).toContain(
-        `build (${status}, 1.2s)`,
-      );
+      expect(model.frame(0, { limit: 20 })).toContain("build (1.2s)");
+      expect(model.frame(0, { limit: 20 })).not.toContain(status);
       expect(model.frame(0, { limit: 20 })).not.toContain('["."');
       expect(model.eventLine(event(name, status))).toBe(
         status === "pending" || status === "ready"
@@ -100,7 +99,7 @@ describe("nested progress model", () => {
     vi.advanceTimersByTime(1200);
     // Assert
     expect(model.frame(1, { limit: 20 })).toBe(
-      "/ root (running, 1.2s)\n  / child (running, 1.2s)",
+      "/ root (1.2s)\n  / child (1.2s)",
     );
     expect(model.frame(2, { limit: 20 })).toContain("- child");
     expect(model.frame(3, { limit: 20 })).toContain("\\ child");
@@ -123,8 +122,8 @@ describe("nested progress model", () => {
     const active = model.frame(0, { limit: 20 });
     model.update(event("root", "succeeded"));
     // Assert
-    expect(active).toContain("| root (running, 1.2s)");
-    expect(model.frame(0, { limit: 20 })).toBe("+ root (succeeded, 1.2s)");
+    expect(active).toContain("| root (1.2s)");
+    expect(model.frame(0, { limit: 20 })).toBe("+ root (1.2s)");
   });
 
   it("uses literal shell task IDs and sanitizes terminal controls in all labels", () => {
@@ -138,7 +137,7 @@ describe("nested progress model", () => {
     );
     const frame = model.frame(0, { limit: 20 });
     // Assert
-    expect(frame).toBe(". pkg :shell name (pending)");
+    expect(frame).toBe(". pkg :shell name");
     expect(frame).not.toContain("\u{1B}");
   });
 
@@ -167,9 +166,9 @@ describe("nested progress model", () => {
     model.update(event("active", "running"));
     const frame = model.frame(0, { limit: 3 });
     // Assert
-    expect(frame).toContain("root (running,");
-    expect(frame).toContain("  | group (running,");
-    expect(frame).toContain("    | active (running");
+    expect(frame).toContain("root (");
+    expect(frame).toContain("  | group (");
+    expect(frame).toContain("    | active");
     expect(frame).toContain("2 more tasks");
     expect(frame.split("\n")).toHaveLength(4);
     expect(model.frame(0, { limit: 1 }).split("\n").length).toBeLessThanOrEqual(
@@ -222,9 +221,9 @@ describe("nested progress model", () => {
     );
     const frame = new ProgressModel(graph, "validate:web", false).frame(0);
     // Assert
-    expect(frame).toContain("    . lib:build (pending)");
-    expect(frame).toContain("      . clean (pending)");
-    expect(frame.match(/clean \(pending\)/g)).toHaveLength(2);
+    expect(frame).toContain("    . lib:build");
+    expect(frame).toContain("      . clean");
+    expect(frame.match(/\. clean/g)).toHaveLength(2);
   });
 
   it("places shared builds under their own validation groups regardless of first consumer", () => {
@@ -242,13 +241,13 @@ describe("nested progress model", () => {
     const failed = model.frame(0);
     // Assert
     expect(frame).not.toContain(" > ");
-    expect(frame.match(/^ {4}\. build /gm)).toHaveLength(3);
+    expect(frame.match(/^ {4}\. build$/gm)).toHaveLength(3);
     expect(frame.indexOf("validate:contract")).toBeLessThan(
-      frame.lastIndexOf("clean (pending)"),
+      frame.lastIndexOf(". clean"),
     );
     expect(frame).not.toMatch(/^ {2}\. build /m);
-    expect(frame.match(/clean \(pending\)/g)).toHaveLength(3);
-    expect(failed.match(/clean \(blocked\)/g)).toHaveLength(3);
+    expect(frame.match(/\. clean/g)).toHaveLength(3);
+    expect(failed.match(/! clean/g)).toHaveLength(3);
     expect(
       model.eventLine({ package: ".", status: "blocked", taskId: id("build") }),
     ).toBeUndefined();

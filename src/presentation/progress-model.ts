@@ -263,9 +263,14 @@ export class ProgressModel {
     const timestamp = event?.completedAt;
     const cacheNote =
       status === "succeeded" && event?.cacheReason !== undefined
-        ? `, not cached: ${event.cacheReason}`
+        ? `not cached: ${event.cacheReason}`
         : "";
-    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope, this.packagePaths)} (${status}${duration === undefined ? "" : `, ${(duration / 1000).toFixed(1)}s`}${timestamp === undefined ? "" : `, last success: ${timestamp}`}${cacheNote})`;
+    const details = [
+      duration === undefined ? undefined : `${(duration / 1000).toFixed(1)}s`,
+      timestamp === undefined ? undefined : `last success: ${timestamp}`,
+      cacheNote || undefined,
+    ].filter((detail): detail is string => detail !== undefined);
+    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope, this.packagePaths)}${details.length === 0 ? "" : ` (${details.join(", ")})`}`;
   }
 
   private status(row: ProgressRow): TaskStatus {

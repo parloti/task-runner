@@ -125,7 +125,7 @@ describe("executable CLI", () => {
         ".",
       ];
       vi.spyOn(process.stderr, "write").mockImplementation((message) => {
-        if (String(message).includes("(running")) listeners[signal]?.();
+        if (String(message).includes("check (")) listeners[signal]?.();
         return true;
       });
       try {
@@ -198,9 +198,7 @@ describe("executable CLI", () => {
         await import("./cli.js");
         // Assert
         expect(process.exitCode).toBe(code === 0 ? 0 : 1);
-        expect(output).toHaveBeenCalledWith(
-          expect.stringContaining(code === 0 ? "(succeeded" : "(failed"),
-        );
+        expect(output).toHaveBeenCalledWith(expect.stringContaining("check"));
         const errorOutput = error.mock.calls.flat().join("");
         expect(
           errorOutput.includes("Command failed (7): check\nLog: logs"),

@@ -188,10 +188,10 @@ describe("packed distribution", () => {
           ),
         ),
       ).toBe(true);
-      expect(cli.stderr).toContain("leaf (running");
-      expect(cli.stderr).toMatch(/build \(succeeded, \d+\.\ds\)/);
-      expect(cli.stderr).toContain("docs (succeeded");
-      expect(cli.stderr).toMatch(/check \(succeeded, \d+\.\ds\)/);
+      expect(cli.stderr).toContain("leaf (");
+      expect(cli.stderr).toMatch(/build \(\d+\.\ds\)/);
+      expect(cli.stderr).toContain("docs");
+      expect(cli.stderr).toMatch(/check \(\d+\.\ds\)/);
       expect(cli.stderr).not.toContain('[".","');
       expect(cli.stderr).not.toContain("\u{1B}[");
       expect(cli.stderr).toMatch(

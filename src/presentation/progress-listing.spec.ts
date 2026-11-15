@@ -76,11 +76,12 @@ describe("terminal progress", () => {
       progress.stop();
       const final = stripVTControlCharacters(text.slice(offset));
       // Assert
-      expect(final).toContain("validate (blocked");
-      expect(final).toContain("  \u{2714} build (succeeded, 0.1s)");
-      expect(final).toContain("    \u{2714} clean (succeeded, 0.1s)");
-      expect(final).toContain("    \u{2714} compile (succeeded, 0.1s)");
-      expect(final).toContain(`test (${status})`);
+      expect(final).toContain("\u{26A0} validate");
+      expect(final).toContain("  \u{2714} build (0.1s)");
+      expect(final).toContain("    \u{2714} clean (0.1s)");
+      expect(final).toContain("    \u{2714} compile (0.1s)");
+      expect(final).toContain("test");
+      expect(final).not.toContain(status);
       expect(final).not.toContain("more tasks");
       expect(vi.getTimerCount()).toBe(0);
     },
@@ -151,9 +152,7 @@ describe("terminal progress", () => {
       }
       // Assert
       expect(text.includes("\u{1B}[32m")).toBe(colored);
-      expect(stripVTControlCharacters(text)).toContain(
-        "\u{2714} check (succeeded)",
-      );
+      expect(stripVTControlCharacters(text)).toContain("\u{2714} check");
     },
   );
   it.each([undefined, 12])(
@@ -185,11 +184,8 @@ describe("terminal progress", () => {
       progress.stop();
       vi.advanceTimersByTime(1000);
       // Assert
-      expect(stripVTControlCharacters(text)).toContain("check (pending)");
-      expect(stripVTControlCharacters(text)).toContain("check (running");
-      expect(stripVTControlCharacters(text)).toContain(
-        "check (succeeded, 0.2s)",
-      );
+      expect(stripVTControlCharacters(text)).toContain("check");
+      expect(stripVTControlCharacters(text)).toContain("check (0.2s)");
       expect(text).toContain("\u{1B}[");
       expect(text).toBe(settled);
       expect(vi.getTimerCount()).toBe(0);
@@ -217,8 +213,8 @@ describe("terminal progress", () => {
     progress.stop();
     // Assert
     expect(write.mock.calls).toEqual([
-      ["| check (running, 0.0s)\n"],
-      ["x check (failed, 0.1s)\n"],
+      ["| check (0.0s)\n"],
+      ["x check (0.1s)\n"],
     ]);
     expect(vi.getTimerCount()).toBe(0);
   });

@@ -54,7 +54,7 @@ describe("nested progress model", () => {
 
     // Assert
     expect(model.summary()).toBe("Tasks: 2 | pending: 1 | failed: 1");
-    expect(model.frame(0)).toContain("remembered (failed)");
+    expect(model.frame(0)).toContain("x remembered");
   });
 
   it("shows cached successes separately and preserves the previous completion time", () => {
@@ -102,11 +102,11 @@ describe("nested progress model", () => {
       const completed = model.frame(0);
       // Assert
       expect(initial.includes("first")).toBe(collapse === false);
-      expect(active).toContain("nested (running,");
-      expect(active).toContain("command (running,");
-      expect(active).toContain("later (pending)");
+      expect(active).toContain("nested (");
+      expect(active).toContain("command (");
+      expect(active).toContain("later");
       expect(active.includes("queued")).toBe(collapse === false);
-      expect(completed).toContain("first (succeeded,");
+      expect(completed).toContain("first (");
       expect(completed.includes("nested")).toBe(collapse === false);
       expect(model.summary()).toBe("Tasks: 2 | pending: 1 | succeeded: 1");
     },
@@ -254,21 +254,21 @@ describe("nested progress model", () => {
     // Assert
     expect(frame).toBe(
       [
-        ". validate:automation (pending)",
-        "  . build (pending)",
-        "    . api-contract:build (pending)",
-        "      . utils:build (pending)",
-        "        . utility-compile (pending)",
-        "      . clean (pending)",
-        "      . compile (pending)",
-        "      . resolve-paths (pending)",
-        "    . app-compile (pending)",
+        ". validate:automation",
+        "  . build",
+        "    . api-contract:build",
+        "      . utils:build",
+        "        . utility-compile",
+        "      . clean",
+        "      . compile",
+        "      . resolve-paths",
+        "    . app-compile",
       ].join("\n"),
     );
-    expect(direct).toContain(". api-contract:build (pending)");
-    expect(direct).toContain("  . clean (pending)");
+    expect(direct).toContain(". api-contract:build");
+    expect(direct).toContain("  . clean");
     expect(model.eventLine(event("clean", "running"))).toBe(
-      "      | clean (running, 13.6s)",
+      "      | clean (13.6s)",
     );
   });
   it("omits redundant scope through nested groups but retains cross-workspace labels", () => {
@@ -289,12 +289,12 @@ describe("nested progress model", () => {
     model.update(event(tests, "blocked", 107_200));
     const frame = model.frame(0, { limit: 30 });
     // Assert
-    expect(frame).toContain("validate:automation (pending)");
-    expect(frame).toContain("  ! test:all (blocked, 107.2s)");
-    expect(frame).toContain("    . test (pending)");
-    expect(frame).toContain("    . lib:shared (pending)");
+    expect(frame).toContain("validate:automation");
+    expect(frame).toContain("  ! test:all (107.2s)");
+    expect(frame).toContain("    . test");
+    expect(frame).toContain("    . lib:shared");
     expect(model.eventLine(event(tests, "blocked"))).toBe(
-      "  ! test:all (blocked, 107.2s)",
+      "  ! test:all (107.2s)",
     );
   });
 });

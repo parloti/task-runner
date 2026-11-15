@@ -197,9 +197,9 @@ describe("scrollable terminal viewport", () => {
     // Assert
     expect(frame()).toContain("Lines 12-20/20");
     // Act
-    view.render("root (succeeded)", "Tasks: 1 | succeeded: 1");
+    view.render("root", "Tasks: 1 | succeeded: 1");
     // Assert
-    expect(frame()).toContain("root (succeeded)");
+    expect(frame()).toContain("root");
     expect(frame()).not.toContain("task ");
     expect(frame()).toContain("Lines 1-1/1");
     expect(String(write.mock.calls.at(-1)?.[0]).endsWith("\u{1B}[J")).toBe(

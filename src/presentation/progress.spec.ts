@@ -57,9 +57,7 @@ describe("terminal progress", () => {
           .join(""),
       );
       // Assert
-      expect(final).toMatch(
-        new RegExp(String.raw`^\n[^\n]+ check \(${status}\)\n\n$`),
-      );
+      expect(final).toMatch(/^\n[^\n]+ check\n\n$/);
       const calls = write.mock.calls.length;
       progress.stop();
       expect(write).toHaveBeenCalledTimes(calls);
@@ -118,7 +116,7 @@ describe("terminal progress", () => {
         .map(([text]) => String(text))
         .join("");
       expect(final.indexOf("\u{1B}[?1049l")).toBeLessThan(
-        final.indexOf(`check (${status}`),
+        final.indexOf("check"),
       );
       expect(final).not.toContain(command);
       expect(final).not.toContain("Ctrl+C stop");
@@ -199,13 +197,13 @@ describe("terminal progress", () => {
           .join(""),
       );
       // Assert
-      expect(end).toContain("child-3 (pending)");
+      expect(end).toContain("child-3");
       expect(end).toContain("... 6 more tasks");
       expect(end).toContain("Lines 5-6/6");
-      expect(final).toContain("root (succeeded");
+      expect(final).toContain("root");
       expect(final.includes("child-")).toBe(!collapse);
       expect(final.includes("more tasks")).toBe(!collapse);
-      expect(final.includes("child-3 (succeeded")).toBe(!collapse);
+      expect(final.includes("child-3")).toBe(!collapse);
       expect(final.includes("... 6 more tasks")).toBe(!collapse);
     },
   );
@@ -231,7 +229,7 @@ describe("terminal progress", () => {
     expect(() => {
       progress.stop();
     }).toThrow(failure);
-    expect(String(write.mock.calls.at(-1)?.[0])).toContain("check (pending)");
+    expect(String(write.mock.calls.at(-1)?.[0])).toContain("check");
     const count = write.mock.calls.length;
     progress.stop();
     expect(write).toHaveBeenCalledTimes(count);

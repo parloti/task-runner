@@ -49,7 +49,7 @@ describe("nested progress model", () => {
       model.update(event("root", status));
       vi.advanceTimersByTime(5000);
       // Assert
-      expect(model.frame(0, { limit: 20 })).toContain(`root (${status}, 1.2s)`);
+      expect(model.frame(0, { limit: 20 })).toContain("root (1.2s)");
     },
   );
 
@@ -67,9 +67,7 @@ describe("nested progress model", () => {
       model.update(event("empty", status));
       vi.advanceTimersByTime(2000);
       // Assert
-      expect(model.frame(0, { limit: 20 })).toContain(
-        `empty (${status}, 0.0s)`,
-      );
+      expect(model.frame(0, { limit: 20 })).toContain("empty (0.0s)");
     },
   );
 
@@ -99,7 +97,7 @@ describe("nested progress model", () => {
       // Assert
       expect(colored).toContain(`\u{1B}[${String(color)}m${icon}\u{1B}[39m`);
       expect(stripVTControlCharacters(colored)).toBe(uncolored);
-      expect(uncolored).toBe(`${icon} check (${status}, 0.1s)`);
+      expect(uncolored).toBe(`${icon} check (0.1s)`);
     },
   );
 
@@ -146,12 +144,12 @@ describe("nested progress model", () => {
     // Assert
     expect(frame).toBe(
       [
-        ". validate (pending)",
-        "  . build (pending)",
-        "    . clean (pending)",
-        "    . compile (pending)",
-        "  . pack (pending)",
-        "  . lib:test (pending)",
+        ". validate",
+        "  . build",
+        "    . clean",
+        "    . compile",
+        "  . pack",
+        "  . lib:test",
       ].join("\n"),
     );
   });
@@ -205,15 +203,13 @@ describe("nested progress model", () => {
     model.update(event("validate", "succeeded"));
     vi.advanceTimersByTime(10_000);
     // Assert
-    expect(live).toContain("validate (running, 1.2s)");
-    expect(live).toContain("build (running, 1.2s)");
-    expect(live).toContain("pack (pending)");
-    expect(completedGroups).toContain("build (succeeded, 2.0s)");
-    expect(completedGroups).toContain("pack (succeeded, 1.0s)");
-    expect(completedGroups).toContain("validate (running, 3.5s)");
-    expect(model.frame(0, { limit: 30 })).toBe("+ validate (succeeded, 4.5s)");
-    expect(model.eventLine(event("pack", "succeeded"))).toBe(
-      "  + pack (succeeded, 1.0s)",
-    );
+    expect(live).toContain("validate (1.2s)");
+    expect(live).toContain("build (1.2s)");
+    expect(live).toContain("pack");
+    expect(completedGroups).toContain("build (2.0s)");
+    expect(completedGroups).toContain("pack (1.0s)");
+    expect(completedGroups).toContain("validate (3.5s)");
+    expect(model.frame(0, { limit: 30 })).toBe("+ validate (4.5s)");
+    expect(model.eventLine(event("pack", "succeeded"))).toBe("  + pack (1.0s)");
   });
 });
