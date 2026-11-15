@@ -9,9 +9,9 @@
 <div class="tsd-page-title">
 <h1>@codeperfect/task-runner</h1></div>
 <div class="tsd-panel tsd-typography"><h1 id="task-runner" class="tsd-anchor-link">Task Runner<a href="#task-runner" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
-<p>A dependency-aware npm-script runner with a compiled CLI and reusable library.
-Requires Node.js 24 or newer. No Workspaces Manager or runtime TypeScript loader
-is required.
+<p>A dependency-aware task runner with a compiled CLI and reusable library.
+Requires Node.js 24 or newer. No consumer-specific integration or runtime
+TypeScript loader is required.
 Local development preparation installs a source CLI shim; packed consumers use
 the compiled executable without running that development-only setup.</p>
 <h2 id="install" class="tsd-anchor-link">Install<a href="#install" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
@@ -37,9 +37,20 @@ including build before E2E.</li>
 </ul>
 <h2 id="configuration" class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>Put <code>task-runner.json</code> at the repository root:</p>
-<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;version&quot;</span><span class="hl-1">: </span><span class="hl-5">2</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;packages&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;.&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;compile&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;test&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-4">&quot;dependsOn&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">        </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1"> }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;docs&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;docs&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;optional&quot;</span><span class="hl-1">: </span><span class="hl-3">true</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;check&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;dependsOn&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;docs&quot;</span><span class="hl-1">] }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;version&quot;</span><span class="hl-1">: </span><span class="hl-5">2</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;defaults&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;concurrency&quot;</span><span class="hl-1">: </span><span class="hl-5">3</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;collapse&quot;</span><span class="hl-1">: </span><span class="hl-3">false</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;maxTasks&quot;</span><span class="hl-1">: </span><span class="hl-5">150</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;scroll&quot;</span><span class="hl-1">: </span><span class="hl-3">false</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;packages&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;.&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;compile&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;test&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-4">&quot;dependsOn&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">        </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1"> }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;docs&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;docs&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;optional&quot;</span><span class="hl-1">: </span><span class="hl-3">true</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-4">&quot;check&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;dependsOn&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;docs&quot;</span><span class="hl-1">] }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
 </code><button type="button">Copy</button></pre>
 
+<p>The config is the complete workflow declaration: it lists configured package
+paths, task names, dependencies, and npm script references. The runner does not
+discover workspace packages or decide which scripts and task groups belong in
+the project. The project-maintenance tool or project owner that writes this file
+owns those decisions.</p>
+<p>The optional <code>defaults</code> object sets runner behavior when the corresponding CLI
+option is omitted. It accepts <code>ci</code>, <code>concurrency</code>, <code>collapse</code>, <code>maxTasks</code>, and
+<code>scroll</code>. An explicit CLI option takes precedence over its configured default;
+otherwise built-in defaults apply. The <code>CI</code> environment variable still enables
+CI behavior, and an explicitly configured concurrency can override its
+sequential concurrency default.</p>
 <p>Keep <code>compile</code> and <code>test</code> as ordinary npm scripts; add
 <code>&quot;check&quot;: &quot;task-runner run check&quot;</code> to <code>package.json</code>. Task references are explicit,
 not inferred from shell text. Use <code>{ &quot;kind&quot;: &quot;shell&quot;, &quot;command&quot;: &quot;...&quot; }</code> for an
@@ -69,70 +80,68 @@ Invoking from a workspace selects that package's task without accidentally
 selecting a root aggregate. Nested
 directories select their nearest containing configured package.
 <code>--config &lt;path&gt;</code> and <code>--package &lt;relative-path&gt;</code> override discovery/selection.
+Settings such as <code>--concurrency</code>, <code>--ci</code>, <code>--collapse</code>, <code>--max-tasks</code>, and
+<code>--scroll</code> override matching values in <code>defaults</code>.
 The schema is exported as <code>@codeperfect/task-runner/schema.json</code>.</p>
 <h2 id="library-and-presets" class="tsd-anchor-link">Library and presets<a href="#library-and-presets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<pre><code class="typescript"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">runTasks</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">createWorkspacePreset</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner/presets&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">runTasks</span><span class="hl-1">(</span><span class="hl-2">&quot;check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-7">cwd:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/repository&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">signal:</span><span class="hl-1"> </span><span class="hl-7">abortController</span><span class="hl-1">.</span><span class="hl-7">signal</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">onEvent</span><span class="hl-7">:</span><span class="hl-1"> (</span><span class="hl-7">event</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-7">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">status</span><span class="hl-1">, </span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">taskId</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">preset</span><span class="hl-1"> = </span><span class="hl-0">createWorkspacePreset</span><span class="hl-1">([</span><br/><span class="hl-1">  { </span><span class="hl-7">path:</span><span class="hl-1"> </span><span class="hl-2">&quot;.&quot;</span><span class="hl-1">, </span><span class="hl-7">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;root&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-7">path:</span><span class="hl-1"> </span><span class="hl-2">&quot;packages/lib&quot;</span><span class="hl-1">, </span><span class="hl-7">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;@example/lib&quot;</span><span class="hl-1">, </span><span class="hl-7">utility:</span><span class="hl-1"> </span><span class="hl-3">true</span><span class="hl-1"> },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-7">path:</span><span class="hl-1"> </span><span class="hl-2">&quot;apps/web&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;web&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">angular:</span><span class="hl-1"> </span><span class="hl-3">true</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">internalDependencies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;@example/lib&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">]);</span><br/><span class="hl-9">// Write preset.config and merge preset.scripts into the corresponding manifests.</span>
+<pre><code class="typescript"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">runTasks</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">createWorkspacePreset</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner/presets&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">preset</span><span class="hl-1"> = </span><span class="hl-0">createWorkspacePreset</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-7">packages:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;.&quot;</span><span class="hl-7">:</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">compile:</span><span class="hl-1"> { </span><span class="hl-7">run:</span><span class="hl-1"> { </span><span class="hl-7">kind:</span><span class="hl-1"> </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-7">script:</span><span class="hl-1"> </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-7">check:</span><span class="hl-1"> { </span><span class="hl-7">dependsOn:</span><span class="hl-1"> [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">] },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">runTasks</span><span class="hl-1">(</span><span class="hl-2">&quot;check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-7">cwd:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/repository&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">signal:</span><span class="hl-1"> </span><span class="hl-7">abortController</span><span class="hl-1">.</span><span class="hl-7">signal</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">onEvent</span><span class="hl-7">:</span><span class="hl-1"> (</span><span class="hl-7">event</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-7">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">status</span><span class="hl-1">, </span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">taskId</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><span class="hl-9">// Write preset to task-runner.json; npm scripts remain in package.json.</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Generated preset configs include a <code>$comment</code> warning that the file is
-autogenerated and manual edits will be overwritten. It remains valid JSON and
-is accepted by the task-runner parser and schema.</p>
-<p>Presets leave repository-specific lifecycle hooks such as <code>prepare</code> untouched.
-Package <code>pack</code> is a normal npm command depending on <code>build</code>, with no separate
-<code>pack:artifact</code> task. Root monorepo <code>pack</code> aggregates the workspace pack tasks.
-Monorepo validation shows root lint once, then <code>validate:&lt;workspace&gt;</code> groups
-containing each workspace's build, pack, docs, typecheck, and test checks.
-These groups are also available as root CLI/npm entrypoints; package-local
-<code>validate</code> retains its local lint checks. Shared prerequisites still run once.
-Cross-workspace command labels use <code>&lt;package-suffix&gt;:&lt;task&gt;</code> when the suffix is
-unique, such as <code>automation:mutation</code>; ambiguous suffixes use the full package
-path. Subtasks omit that qualifier when their containing group establishes the
-package context. Failure and cancellation messages use the same labels, while
-event data and log paths retain full package paths.</p>
+<p><code>createWorkspacePreset</code> is a convenience-only config constructor. It accepts
+the complete task definitions chosen by the caller and returns a version-2
+object compatible with <code>task-runner.json</code>; it does not inspect the project or
+decide which packages, scripts, or task groups to include. When a task
+references an npm script, that script's command remains in the configured
+package's <code>package.json</code>; the config names the script the runner should execute.</p>
 <p><code>compileGraph</code> and <code>executeGraph</code> also support an injected command executor for
 non-process integrations. Library calls return results or propagate boundary
 errors; they never set process exit status or install global signal handlers.</p>
 <h2 id="runtime-behavior" class="tsd-anchor-link">Runtime behavior<a href="#runtime-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
-<li>Validate all definitions before execution, including required scripts and cycles.</li>
+<li>Validate the configuration, task references, and cycles before execution.</li>
+<li>The runner does not read <code>package.json</code>. Required npm scripts are attempted
+through npm and fail as task execution if missing; an optional npm script
+adds <code>--if-present</code> and succeeds when absent.</li>
 <li>Execute shared tasks once per invocation, with one global leaf-command limit.</li>
-<li>During validation, documentation waits for selected builds so generated
-package exports are available. Running docs or pack alone does not build.</li>
-<li>Default concurrency is available CPUs minus one, with a minimum of one.
-<code>--concurrency N</code> selects a positive integer limit. Non-empty <code>CI</code> or <code>--ci</code>
-defaults to sequential commands and streams output; an explicit limit wins.</li>
+<li>Default concurrency is half the available CPUs, rounded down, with a minimum
+of one.
+<code>defaults.concurrency</code> or <code>--concurrency N</code> sets a positive integer limit.
+Non-empty <code>CI</code>, <code>defaults.ci</code>, or <code>--ci</code> defaults to sequential commands and
+streams output; configured or CLI concurrency takes precedence.</li>
 <li>On failure, stop admission, block dependents, cancel owned active processes,
 and wait for cleanup. Windows cancellation terminates the owned tree;
 POSIX cancellation escalates from SIGTERM to SIGKILL.</li>
 <li>Interactive terminals show nested groups with animated running tasks,
 durations, readable package labels, and distinct waiting/ready/success/failure/
-skipped/blocked/cancelled states. Unstarted and successful groups collapse by
+blocked/cancelled states. Unstarted and successful groups collapse by
 default; groups expand when their subtree starts, while nested unstarted
 groups remain collapsed. Failed, blocked, and cancelled groups stay expanded;
-<code>--collapse false</code> keeps their subtasks visible (<code>--collapse true</code> re-enables
-collapsing). This option does not affect execution or plain CI output.</li>
+<code>defaults.collapse</code> or <code>--collapse true|false</code> sets the collapse behavior;
+explicit CLI values win. This option does not affect execution or plain CI
+output.</li>
 <li>Groups stay pending until work in their displayed subtree starts. Shared
 dependencies displayed elsewhere do not activate waiting workspaces or later
 phases such as pack and test:all. Group timers start with their subtree's first
 work and stop when the group finishes, without summing overlapping durations.</li>
 <li>Live status icons are colored: cyan running spinner, green success, red
-failure, yellow ready/blocked, magenta cancelled, and gray pending/skipped.
+failure, yellow ready/blocked, magenta cancelled, and gray pending.
 Set <code>NO_COLOR</code> or <code>FORCE_COLOR=0</code> to disable colors without losing state icons.</li>
 <li>Shared prerequisites appear once. Workspace tasks belong to their matching
 validation group when it is included; otherwise their first containing group
 owns the display. Empty cross-package aggregate wrappers are omitted.
 Display ownership never changes execution order or concurrency.</li>
-<li><code>--max-tasks N</code> caps interactive task rows at a positive integer, default 100,
-excluding the omitted-task summary. Live redraw fits the terminal viewport;
+<li><code>defaults.maxTasks</code> or <code>--max-tasks N</code> sets the interactive task-row cap to a
+positive integer, default 100, excluding the omitted-task summary. Live
+redraw fits the terminal viewport;
 the final listing is preserved in scrollback up to the configured cap.
 <code>--collapse false</code> retains completed children in the final listing after
 success, failure, or cancellation, regardless of terminal height.</li>
 <li>CI, redirected output, and <code>TERM=dumb</code> use concise non-animated progress.
 Full transitions remain in JSONL. Animation stops before final diagnostics.
 Rendering uses <code>log-update</code>, not Listr2 or a second task scheduler.</li>
-<li>Scrolling is enabled by default. <code>--no-scroll</code> disables the alternate-screen
-live view, and <code>--scroll</code> remains accepted. Use Up/Down, Page Up/Down, Home/End,
-or the mouse wheel
+<li>Scrolling is enabled by default. <code>defaults.scroll</code>, <code>--no-scroll</code>, or
+<code>--scroll</code> sets the alternate-screen live view, with explicit CLI values
+taking precedence. Use Up/Down, Page Up/Down, Home/End, or the mouse wheel
 where SGR mouse reporting is supported (such as compatible Git Bash terminals).
 A pinned header shows the command; the footer shows the visible line range.
 Both disappear when the view closes. npm scripts show <code>npm run &lt;script&gt;</code>
