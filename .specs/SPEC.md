@@ -11,6 +11,11 @@
 
 - Input: version-2 JSON config, task name, package scope, CI/concurrency options,
   and optional cancellation signal.
+- The optional root `defaults` object can set `ci`, `concurrency`, `collapse`,
+  `maxTasks`, and `scroll`. Explicit CLI values take precedence over configured
+  defaults; omitted values use built-in defaults. A non-empty `CI` environment
+  variable continues to enable CI behavior. Configured or CLI concurrency can
+  override CI's sequential concurrency default.
 - Tasks live in `packages[path][name]`, without task-level package fields
   or entrypoint mappings. Any local task is directly invocable. Bare dependency
   names resolve locally; `<package-path>#<task>` selects another package and
@@ -35,8 +40,9 @@
 - Each task identity executes once per run. Independent tasks can overlap up to
   the global leaf-command limit; dependency waits do not consume slots.
 - Default concurrency is `max(1, availableParallelism() - 1)`.
-  A non-empty CI variable or `--ci` defaults to one active command and streamed
-  output. An explicit positive integer concurrency overrides either default.
+  A non-empty CI variable, `--ci`, or `defaults.ci` defaults to one active
+  command and streamed output. An explicit positive integer concurrency from
+  the CLI or `defaults` overrides either default.
 - A command failure stops admission, blocks dependent work, cancels active work,
   and awaits owned subprocess/stream cleanup. Failure context is preserved.
 - Library callers receive task states and errors without process-global changes.
@@ -85,18 +91,20 @@
 - Pending and successful groups collapse in live output by default. Groups
   expand when their displayed subtree starts; nested pending groups remain
   collapsed. Failed, blocked, and cancelled groups remain expanded.
-  `--collapse false`
-  keeps completed subtasks visible; `--collapse true` enables collapsing.
+  `defaults.collapse` and `--collapse true|false` set this behavior, with CLI
+  values taking precedence.
   Failure messages retain log paths.
-- `--max-tasks N` accepts a positive safe integer and defaults to 100 task rows,
-  excluding the omitted-count summary. Live output fits the terminal viewport;
+- `--max-tasks N` accepts a positive safe integer and defaults to 100 task rows
+  unless `defaults.maxTasks` is set, excluding the omitted-count summary. Live
+  output fits the terminal viewport;
   final output persists up to the configured limit in scrollback. With collapse
   disabled, terminal height never removes completed descendants from that
   final listing, including after failure or cancellation. Interactive final
   listings retain a blank line above and below the task tree to separate it
   from the invocation and subsequent diagnostics or shell prompt.
-- The alternate-screen live viewport is enabled by default; `--no-scroll`
-  disables it. `--scroll` remains accepted. Up/Down move one
+- The alternate-screen live viewport is enabled by default unless
+  `defaults.scroll` is set; `--no-scroll` disables it and `--scroll` enables it,
+  taking precedence over the configured default. Up/Down move one
   rendered line; Page Up/Down move one page; Home/End select the boundaries.
   SGR mouse-wheel reports move three lines where supported by the terminal.
   The viewport wraps long rows, clamps scrolling on resize/collapse, and respects

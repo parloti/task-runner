@@ -1,5 +1,8 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
+
 import { CommandFailedError } from "../domain";
+import { findConfiguration, parseConfiguration } from "../infrastructure";
 import {
   formatInvocation,
   parseArguments,
@@ -18,21 +21,35 @@ const terminate = (): void => {
 process.on("SIGINT", interrupt);
 process.on("SIGTERM", terminate);
 try {
-  const input = parseArguments(process.argv.slice(2));
+  const args = process.argv.slice(2);
+  const input = parseArguments(args);
   if (input.help) {
     console.log(
       "task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--collapse true|false] [--max-tasks n] [--no-scroll]",
     );
   } else {
+    const configPath = findConfiguration(process.cwd(), input.options.config);
+    const config = parseConfiguration(
+      JSON.parse(readFileSync(configPath, "utf8")) as unknown,
+    );
+    const scrollWasSpecified =
+      args.includes("--scroll") || args.includes("--no-scroll");
+    const settings = {
+      ...config.defaults,
+      ...input.options,
+      scroll: scrollWasSpecified
+        ? input.options.scroll
+        : (config.defaults?.scroll ?? true),
+    };
     const progress = new TerminalProgress(
       process.stderr,
       process.stderr.isTTY &&
         !process.env["CI"] &&
-        input.options.ci !== true &&
+        settings.ci !== true &&
         process.env["TERM"] !== "dumb",
-      input.options.collapse,
-      input.options.maxTasks,
-      input.options.scroll && process.stdin.isTTY
+      settings.collapse,
+      settings.maxTasks,
+      settings.scroll && process.stdin.isTTY
         ? {
             command: formatInvocation(process.argv.slice(2), process.env),
             input: process.stdin,

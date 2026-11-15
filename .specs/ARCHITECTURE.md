@@ -10,9 +10,12 @@
 | `src/presets`        | Optional pure workflow construction                                     | Domain contracts                      |
 | `tests/e2e`          | Real subprocess and consumer behavior                                   | Public/runtime boundaries             |
 
-- Version-2 package-local JSON is validated at the IO boundary. Graph compilation
-  resolves local/qualified references into one graph with canonical readable IDs
-  (root names or `<package>#<task>`). No serialized arrays or entrypoint map.
+- Version-2 package-local JSON is validated at the IO boundary, including
+  optional runner defaults. Bootstrap combines configured defaults with explicit
+  CLI values before presentation starts; runtime defaults are also applied by
+  the library runner. Graph compilation resolves local/qualified references
+  into one graph with canonical readable IDs (root names or
+  `<package>#<task>`). No serialized arrays or entrypoint map.
 - Graph task IDs become nominal `TaskId` values after reference validation.
 - Graph selection recursively expands commandless groups but stops at commands.
   After selection, command dependencies are retained only when their targets

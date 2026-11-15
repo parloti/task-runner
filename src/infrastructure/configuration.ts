@@ -1,7 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { Command, RunnerConfig, TaskDefinition } from "../domain";
+import type {
+  Command,
+  RunnerConfig,
+  RunnerDefaults,
+  TaskDefinition,
+} from "../domain";
 
 import { resolveTaskReference, taskReference } from "../domain";
 
@@ -106,10 +111,18 @@ export function parseConfiguration(value: unknown): RunnerConfig {
   const input = object(value, "configuration");
   if (input["version"] !== 2)
     throw new Error("Unsupported configuration version; expected 2");
-  knownKeys(input, ["$comment", "packages", "version"], "configuration");
+  knownKeys(
+    input,
+    ["$comment", "defaults", "packages", "version"],
+    "configuration",
+  );
   const comment = input["$comment"];
   if (comment !== undefined && typeof comment !== "string")
     throw new TypeError("Expected string: configuration $comment");
+  const configDefaults =
+    input["defaults"] === undefined
+      ? undefined
+      : parseDefaults(input["defaults"]);
   const packages: Record<
     string,
     Record<string, TaskDefinition>
@@ -146,6 +159,7 @@ export function parseConfiguration(value: unknown): RunnerConfig {
   }
   return {
     ...(comment !== undefined && { $comment: comment }),
+    ...(configDefaults !== undefined && { defaults: configDefaults }),
     packages,
     version: 2,
   };
@@ -203,6 +217,53 @@ function object(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value))
     throw new Error(`Expected object: ${label}`);
   return value as Record<string, unknown>;
+}
+
+/**
+ * Validate optional runtime and presentation defaults.
+ * @param value Unknown defaults object from the configuration.
+ * @returns Checked task-runner defaults.
+ * @example `parseDefaults({ concurrency: 2 })` validates a concurrency default.
+ */
+function parseDefaults(value: unknown): RunnerDefaults {
+  const input = object(value, "defaults");
+  knownKeys(
+    input,
+    ["ci", "collapse", "concurrency", "maxTasks", "scroll"],
+    "defaults",
+  );
+  if (input["ci"] !== undefined && typeof input["ci"] !== "boolean")
+    throw new TypeError("Expected boolean: defaults ci");
+  if (input["collapse"] !== undefined && typeof input["collapse"] !== "boolean")
+    throw new TypeError("Expected boolean: defaults collapse");
+  if (input["scroll"] !== undefined && typeof input["scroll"] !== "boolean")
+    throw new TypeError("Expected boolean: defaults scroll");
+  if (
+    input["concurrency"] !== undefined &&
+    (typeof input["concurrency"] !== "number" ||
+      !Number.isSafeInteger(input["concurrency"]) ||
+      input["concurrency"] < 1)
+  )
+    throw new Error("Concurrency must be a positive integer");
+  if (
+    input["maxTasks"] !== undefined &&
+    (typeof input["maxTasks"] !== "number" ||
+      !Number.isSafeInteger(input["maxTasks"]) ||
+      input["maxTasks"] < 1)
+  )
+    throw new Error("Max tasks must be a positive integer");
+  const ci = input["ci"];
+  const collapse = input["collapse"];
+  const concurrency = input["concurrency"];
+  const maxTasks = input["maxTasks"];
+  const scroll = input["scroll"];
+  return {
+    ...(ci !== undefined && { ci }),
+    ...(collapse !== undefined && { collapse }),
+    ...(concurrency !== undefined && { concurrency }),
+    ...(maxTasks !== undefined && { maxTasks }),
+    ...(scroll !== undefined && { scroll }),
+  };
 }
 
 /**

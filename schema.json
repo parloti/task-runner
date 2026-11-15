@@ -10,6 +10,26 @@
       "description": "Optional configuration comment, commonly used to mark generated files."
     },
     "version": { "const": 2 },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Values used when a command-line option is omitted.",
+      "properties": {
+        "ci": { "type": "boolean" },
+        "collapse": { "type": "boolean" },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxTasks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "scroll": { "type": "boolean" }
+      }
+    },
     "packages": {
       "type": "object",
       "propertyNames": {

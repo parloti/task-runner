@@ -62,6 +62,50 @@ describe("configuration boundary", () => {
       error: "Expected string: configuration $comment",
       value: { ...valid(), $comment: 42 },
     },
+    {
+      error: "Expected object: defaults",
+      value: { ...valid(), defaults: JSON.parse("null") as unknown },
+    },
+    {
+      error: 'Unknown property "unknown" in defaults',
+      value: { ...valid(), defaults: { unknown: true } },
+    },
+    {
+      error: "Expected boolean: defaults ci",
+      value: { ...valid(), defaults: { ci: "yes" } },
+    },
+    {
+      error: "Expected boolean: defaults collapse",
+      value: { ...valid(), defaults: { collapse: "no" } },
+    },
+    {
+      error: "Expected boolean: defaults scroll",
+      value: { ...valid(), defaults: { scroll: 1 } },
+    },
+    {
+      error: "Concurrency must be a positive integer",
+      value: { ...valid(), defaults: { concurrency: "2" } },
+    },
+    {
+      error: "Concurrency must be a positive integer",
+      value: { ...valid(), defaults: { concurrency: 1.5 } },
+    },
+    {
+      error: "Concurrency must be a positive integer",
+      value: { ...valid(), defaults: { concurrency: 0 } },
+    },
+    {
+      error: "Max tasks must be a positive integer",
+      value: { ...valid(), defaults: { maxTasks: "100" } },
+    },
+    {
+      error: "Max tasks must be a positive integer",
+      value: { ...valid(), defaults: { maxTasks: 1.5 } },
+    },
+    {
+      error: "Max tasks must be a positive integer",
+      value: { ...valid(), defaults: { maxTasks: 0 } },
+    },
     ...["../escape", "/absolute", "C:\\absolute", "a//b", "./a", "a#b"].map(
       (name) => ({
         error: "Invalid relative",
@@ -133,6 +177,31 @@ describe("configuration boundary", () => {
     const parsed = parseConfiguration(withTask({ dependsOn: [] }));
     // Assert
     expect(parsed.packages["."]?.["check"]).toEqual({});
+  });
+
+  it.each([
+    { defaults: {}, expected: {} },
+    {
+      defaults: {
+        ci: false,
+        collapse: true,
+        concurrency: 3,
+        maxTasks: 500,
+        scroll: false,
+      },
+      expected: {
+        ci: false,
+        collapse: true,
+        concurrency: 3,
+        maxTasks: 500,
+        scroll: false,
+      },
+    },
+  ])("parses runner defaults: $defaults", ({ defaults, expected }) => {
+    // Arrange & Act
+    const parsed = parseConfiguration({ ...valid(), defaults });
+    // Assert
+    expect(parsed.defaults).toEqual(expected);
   });
 
   it("discovers parent configuration or honors explicit paths, and fails clearly when absent", () => {

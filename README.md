@@ -38,6 +38,12 @@ Put `task-runner.json` at the repository root:
 ```json
 {
   "version": 2,
+  "defaults": {
+    "concurrency": 3,
+    "collapse": false,
+    "maxTasks": 150,
+    "scroll": false
+  },
   "packages": {
     ".": {
       "compile": { "run": { "kind": "npm", "script": "compile" } },
@@ -51,6 +57,13 @@ Put `task-runner.json` at the repository root:
   }
 }
 ```
+
+The optional `defaults` object sets runner behavior when the corresponding CLI
+option is omitted. It accepts `ci`, `concurrency`, `collapse`, `maxTasks`, and
+`scroll`. An explicit CLI option takes precedence over its configured default;
+otherwise built-in defaults apply. The `CI` environment variable still enables
+CI behavior, and an explicitly configured concurrency can override its
+sequential concurrency default.
 
 Keep `compile` and `test` as ordinary npm scripts; add
 `"check": "task-runner run check"` to `package.json`. Task references are explicit,
@@ -88,6 +101,8 @@ Invoking from a workspace selects that package's task without accidentally
 selecting a root aggregate. Nested
 directories select their nearest containing configured package.
 `--config <path>` and `--package <relative-path>` override discovery/selection.
+Settings such as `--concurrency`, `--ci`, `--collapse`, `--max-tasks`, and
+`--scroll` override matching values in `defaults`.
 The schema is exported as `@codeperfect/task-runner/schema.json`.
 
 ## Library and presets
@@ -143,8 +158,9 @@ errors; they never set process exit status or install global signal handlers.
 - During validation, documentation waits for selected builds so generated
   package exports are available. Running docs or pack alone does not build.
 - Default concurrency is available CPUs minus one, with a minimum of one.
-  `--concurrency N` selects a positive integer limit. Non-empty `CI` or `--ci`
-  defaults to sequential commands and streams output; an explicit limit wins.
+  `defaults.concurrency` or `--concurrency N` sets a positive integer limit.
+  Non-empty `CI`, `defaults.ci`, or `--ci` defaults to sequential commands and
+  streams output; configured or CLI concurrency takes precedence.
 - On failure, stop admission, block dependents, cancel owned active processes,
   and wait for cleanup. Windows cancellation terminates the owned tree;
   POSIX cancellation escalates from SIGTERM to SIGKILL.
@@ -153,8 +169,9 @@ errors; they never set process exit status or install global signal handlers.
   skipped/blocked/cancelled states. Unstarted and successful groups collapse by
   default; groups expand when their subtree starts, while nested unstarted
   groups remain collapsed. Failed, blocked, and cancelled groups stay expanded;
-  `--collapse false` keeps their subtasks visible (`--collapse true` re-enables
-  collapsing). This option does not affect execution or plain CI output.
+  `defaults.collapse` or `--collapse true|false` sets the collapse behavior;
+  explicit CLI values win. This option does not affect execution or plain CI
+  output.
 - Groups stay pending until work in their displayed subtree starts. Shared
   dependencies displayed elsewhere do not activate waiting workspaces or later
   phases such as pack and test:all. Group timers start with their subtree's first
@@ -166,17 +183,18 @@ errors; they never set process exit status or install global signal handlers.
   validation group when it is included; otherwise their first containing group
   owns the display. Empty cross-package aggregate wrappers are omitted.
   Display ownership never changes execution order or concurrency.
-- `--max-tasks N` caps interactive task rows at a positive integer, default 100,
-  excluding the omitted-task summary. Live redraw fits the terminal viewport;
+- `defaults.maxTasks` or `--max-tasks N` sets the interactive task-row cap to a
+  positive integer, default 100, excluding the omitted-task summary. Live
+  redraw fits the terminal viewport;
   the final listing is preserved in scrollback up to the configured cap.
   `--collapse false` retains completed children in the final listing after
   success, failure, or cancellation, regardless of terminal height.
 - CI, redirected output, and `TERM=dumb` use concise non-animated progress.
   Full transitions remain in JSONL. Animation stops before final diagnostics.
   Rendering uses `log-update`, not Listr2 or a second task scheduler.
-- Scrolling is enabled by default. `--no-scroll` disables the alternate-screen
-  live view, and `--scroll` remains accepted. Use Up/Down, Page Up/Down, Home/End,
-  or the mouse wheel
+- Scrolling is enabled by default. `defaults.scroll`, `--no-scroll`, or
+  `--scroll` sets the alternate-screen live view, with explicit CLI values
+  taking precedence. Use Up/Down, Page Up/Down, Home/End, or the mouse wheel
   where SGR mouse reporting is supported (such as compatible Git Bash terminals).
   A pinned header shows the command; the footer shows the visible line range.
   Both disappear when the view closes. npm scripts show `npm run <script>`

@@ -74,6 +74,48 @@ describe("runtime concurrency policy", () => {
     },
   );
 
+  it("uses configured runtime defaults and lets explicit run options win", async () => {
+    // Arrange
+    const directory = mkdtempSync(path.join(tmpdir(), "runner-defaults-"));
+    writeFileSync(path.join(directory, "package.json"), "{}");
+    const configPath = path.join(directory, "task-runner.json");
+    const packages = { ".": { check: { dependsOn: ["end"] }, end: {} } };
+    vi.stubEnv("CI", "");
+    vi.mocked(availableParallelism).mockReturnValue(8);
+    vi.mocked(executeGraph).mockResolvedValue({
+      errors: [],
+      states: new Map(),
+      success: true,
+    });
+    const scenarios = [
+      {
+        defaults: { concurrency: 2 },
+        expected: 4,
+        options: { concurrency: 4 },
+      },
+      { defaults: { ci: true }, expected: 1, options: {} },
+      { defaults: { ci: true }, expected: 7, options: { ci: false } },
+      { defaults: { ci: true, concurrency: 2 }, expected: 2, options: {} },
+    ];
+    try {
+      // Act
+      for (const { defaults, options } of scenarios) {
+        writeFileSync(
+          configPath,
+          JSON.stringify({ defaults, packages, version: 2 }),
+        );
+        await runTasks("check", { cwd: directory, ...options });
+      }
+
+      // Assert
+      expect(
+        vi.mocked(executeGraph).mock.calls.map((call) => call[2].concurrency),
+      ).toEqual(scenarios.map(({ expected }) => expected));
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
   it("preserves execution and log cleanup failures together", async () => {
     // Arrange
     const directory = mkdtempSync(path.join(tmpdir(), "runner-failure-"));

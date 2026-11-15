@@ -24,10 +24,19 @@ export type ExecuteCommand = (
 
 export interface RunnerConfig {
   readonly $comment?: string;
+  readonly defaults?: RunnerDefaults;
   readonly packages: Readonly<
     Record<string, Readonly<Record<string, TaskDefinition>>>
   >;
   readonly version: 2;
+}
+
+export interface RunnerDefaults {
+  readonly ci?: boolean;
+  readonly collapse?: boolean;
+  readonly concurrency?: number;
+  readonly maxTasks?: number;
+  readonly scroll?: boolean;
 }
 
 export interface RunResult {

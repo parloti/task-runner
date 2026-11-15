@@ -61,13 +61,14 @@ describe("executable CLI", () => {
         expect(process.exitCode).toBe(1);
         expect(error).toHaveBeenCalledExactlyOnceWith(expect.any(Error));
         expect(timer).toHaveBeenCalledTimes(failure === "after-plan" ? 1 : 0);
-        expect(cleanup).toHaveBeenCalledWith(
+        expect(cleanup).toHaveBeenCalledTimes(failure === "after-plan" ? 1 : 0);
+        expect(cleanup.mock.calls[0]?.[0]).toBe(
           failure === "after-plan"
             ? timer.mock.results.at(0)?.value
             : undefined,
         );
-        expect(cleanup.mock.invocationCallOrder[0]).toBeLessThan(
-          error.mock.invocationCallOrder[0] ?? 0,
+        expect(cleanup.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+          error.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
         );
       } finally {
         if (descriptor === undefined)

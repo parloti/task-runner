@@ -32,7 +32,7 @@ export async function runTasks(
   const configPath = findConfiguration(cwd, options.config);
   const root = path.dirname(configPath);
   const config = parseConfiguration(
-    JSON.parse(readFileSync(configPath, "utf8")),
+    JSON.parse(readFileSync(configPath, "utf8")) as unknown,
   );
   const packagePath = options.package ?? findPackage(config, root, cwd);
   const tasks = config.packages[packagePath];
@@ -42,9 +42,12 @@ export async function runTasks(
   const scripts = loadScripts(config, root);
   const graph = compileGraph(config, target, scripts);
   const packagePaths = Object.keys(config.packages);
-  const ci = Boolean(process.env["CI"]) || options.ci === true;
+  const ci =
+    Boolean(process.env["CI"]) || (options.ci ?? config.defaults?.ci ?? false);
   const concurrency =
-    options.concurrency ?? (ci ? 1 : Math.max(1, availableParallelism() - 1));
+    options.concurrency ??
+    config.defaults?.concurrency ??
+    (ci ? 1 : Math.max(1, availableParallelism() - 1));
   if (!Number.isSafeInteger(concurrency) || concurrency < 1)
     throw new Error("Concurrency must be a positive integer");
   options.onPlan?.(graph, target, packagePaths);
