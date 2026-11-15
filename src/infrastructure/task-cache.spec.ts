@@ -2,9 +2,16 @@ import { rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TaskEvent } from "../domain";
+
 import { executeGraph } from "../application";
-import { compileGraph } from "../domain";
-import { createCacheFixtureDirectory, runCachedValidation } from "./__tests__";
+import { compileGraph, taskReference } from "../domain";
+import {
+  cacheConfig,
+  createCacheFixtureDirectory,
+  executeCacheTask,
+  runCachedValidation,
+} from "./__tests__";
 import { createTaskCache } from "./task-cache";
 
 const fixture = { root: "" };
@@ -97,6 +104,40 @@ describe("persistent successful checkpoints", () => {
       forced.events.some((event) => event.cacheReason === "bypassed"),
     ).toBe(true);
     expect(reused.calls).toEqual([]);
+  });
+
+  it("bypasses cached groups containing a remembered failed command", async () => {
+    // Arrange
+    await runCachedValidation(fixture.root);
+    const graph = compileGraph(cacheConfig, "validate");
+    const calls: string[] = [];
+    const events: TaskEvent[] = [];
+
+    // Act
+    const result = await executeGraph(
+      graph,
+      async (task) => {
+        calls.push(task.id);
+        await executeCacheTask(fixture.root, task);
+      },
+      {
+        cache: createTaskCache(fixture.root),
+        concurrency: 1,
+        forceRunTasks: [taskReference(".", "test")],
+        onEvent: (event) => {
+          events.push(event);
+        },
+      },
+    );
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(calls).toEqual(["build", "test"]);
+    expect(
+      events
+        .filter((event) => event.cacheReason === "retry-priority")
+        .map((event) => event.taskId),
+    ).toEqual(["validate", "test"]);
   });
 
   it("invalidates hidden configuration files matched by ordinary input patterns", async () => {

@@ -1,20 +1,14 @@
-import { randomUUID } from "node:crypto";
 import {
-  closeSync,
-  existsSync,
   mkdirSync,
-  openSync,
   readdirSync,
   readFileSync,
   renameSync,
   rmSync,
-  statSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
 
-const lockRetryMs = 20;
+import { acquireFileLock } from "../infrastructure";
 
 /**
  * Prepare the shared log directory and register this active invocation.
@@ -33,7 +27,7 @@ export async function prepareRunLogDirectory(
   const lockPath = path.join(logsDirectory, ".task-runner-lock");
   mkdirSync(logsDirectory, { recursive: true });
 
-  const releaseLock = await acquireLock(lockPath);
+  const releaseLock = await acquireFileLock(lockPath);
   const markerPath = path.join(activeDirectory, `${runId}.json`);
   try {
     mkdirSync(activeDirectory, { recursive: true });
@@ -57,33 +51,6 @@ export async function prepareRunLogDirectory(
 }
 
 /**
- * Serialize directory cleanup and active-run registration across processes.
- * @param lockPath Filesystem path used as the registration lock.
- * @returns A function that releases the acquired lock.
- * @example `await acquireLock(lockPath)` protects log startup changes.
- */
-async function acquireLock(lockPath: string): Promise<() => void> {
-  const owner = `${String(process.pid)}:${randomUUID()}`;
-  for (;;) {
-    try {
-      const descriptor = openSync(lockPath, "wx");
-      try {
-        writeFileSync(descriptor, owner);
-      } finally {
-        closeSync(descriptor);
-      }
-      return () => {
-        unlinkSync(lockPath);
-      };
-    } catch (error) {
-      if (!isAlreadyExists(error)) throw error;
-      removeStaleLock(lockPath);
-      await new Promise((resolve) => setTimeout(resolve, lockRetryMs));
-    }
-  }
-}
-
-/**
  * Check for a filesystem error with the requested code.
  * @param error Error produced by a filesystem operation.
  * @param code Expected Node.js filesystem error code.
@@ -92,16 +59,6 @@ async function acquireLock(lockPath: string): Promise<() => void> {
  */
 function hasErrorCode(error: unknown, code: string): boolean {
   return error instanceof Error && "code" in error && error.code === code;
-}
-
-/**
- * Check whether an error means a lock already exists.
- * @param error Error produced by exclusive lock creation.
- * @returns Whether another process currently owns the lock path.
- * @example `isAlreadyExists(error)` recognizes `open(..., "wx")` contention.
- */
-function isAlreadyExists(error: unknown): boolean {
-  return hasErrorCode(error, "EEXIST");
 }
 
 /**
@@ -128,33 +85,6 @@ function isProcessAlive(pid: number): boolean {
     if (hasErrorCode(error, "EPERM")) return true;
     if (hasErrorCode(error, "ESRCH")) return false;
     throw error;
-  }
-}
-
-/**
- * Clear a lock file whose owner process has exited.
- * @param lockPath Filesystem path to the lock file.
- * @example `removeStaleLock(lockPath)` unblocks after a crashed owner.
- */
-function removeStaleLock(lockPath: string): void {
-  if (!existsSync(lockPath)) return;
-  let owner: string;
-  try {
-    owner = readFileSync(lockPath, "utf8");
-  } catch (error) {
-    if (isMissingFile(error)) return;
-    throw error;
-  }
-  const [pidText] = owner.split(":", 1);
-  const pid = Number(pidText);
-  if (Number.isSafeInteger(pid) && pid > 0 && isProcessAlive(pid)) return;
-  try {
-    // Ignore a lock that another process replaced while this owner was checked.
-    const age = Date.now() - statSync(lockPath).mtimeMs;
-    if (owner.length === 0 && age < 1000) return;
-    if (readFileSync(lockPath, "utf8") === owner) unlinkSync(lockPath);
-  } catch (error) {
-    if (!isMissingFile(error)) throw error;
   }
 }
 

@@ -21,6 +21,7 @@ export interface ExecutionCache {
  * @param graph Selected, validated task graph.
  * @param cache Successful-result persistence adapter.
  * @param onEvent Observer for cache-miss diagnostics.
+ * @param forceRunTasks Task IDs that must execute rather than use cached results.
  * @returns Reusable task identities with their prior success timestamps.
  * @example `prepareCachedTasks(graph, cache)` checks groups before individual commands.
  */
@@ -28,6 +29,7 @@ export async function prepareCachedTasks(
   graph: ReadonlyMap<TaskId, CompiledTask>,
   cache: ExecutionCache,
   onEvent?: (event: TaskEvent) => void,
+  forceRunTasks: ReadonlySet<TaskId> = new Set<TaskId>(),
 ): Promise<ReadonlyMap<TaskId, string>> {
   const cached = new Map<TaskId, string>();
   const scopes = graph
@@ -38,6 +40,15 @@ export async function prepareCachedTasks(
     .toSorted((left, right) => right.members.length - left.members.length);
   for (const { members, task } of scopes) {
     if (cached.has(task.id)) continue;
+    if (members.some((member) => forceRunTasks.has(member.id))) {
+      onEvent?.({
+        cacheReason: "retry-priority",
+        package: task.package,
+        status: "pending",
+        taskId: task.id,
+      });
+      continue;
+    }
     const result = await cache.lookup(task, members);
     if (result.hit) {
       for (const member of members) cached.set(member.id, result.completedAt);

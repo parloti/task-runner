@@ -17,7 +17,9 @@ import {
 export interface ExecutionOptions {
   readonly cache?: ExecutionCache;
   readonly concurrency: number;
+  readonly forceRunTasks?: readonly TaskId[];
   readonly onEvent?: (event: TaskEvent) => void;
+  readonly priorityTasks?: readonly TaskId[];
   readonly signal?: AbortSignal;
 }
 
@@ -25,7 +27,7 @@ export interface ExecutionOptions {
  * Execute a validated task graph with bounded command concurrency.
  * @param graph Validated tasks keyed by canonical task ID.
  * @param execute Adapter that runs one command task.
- * @param options Concurrency, cancellation, and event callbacks.
+ * @param options Concurrency, task priority, cancellation, and event callbacks.
  * @returns Final state and error information for the graph.
  * @example `executeGraph(graph, execute, { concurrency: 2 })` runs at most two commands at once.
  */
@@ -47,6 +49,25 @@ export async function executeGraph(
   const completedAt = new Map<TaskId, string>();
   const active = new Map<TaskId, Promise<void>>();
   const errors: unknown[] = [];
+  const forceRunTasks = new Set(options.forceRunTasks);
+  const priorityTasks = new Set<TaskId>();
+  const prioritize = (id: TaskId): void => {
+    if (priorityTasks.has(id)) return;
+    const task = graph.get(id);
+    if (task === undefined) return;
+    priorityTasks.add(id);
+    for (const dependency of task.dependsOn) prioritize(dependency);
+  };
+  const requestedPriorityTasks = options.priorityTasks ?? [];
+  for (const id of requestedPriorityTasks) prioritize(id);
+  const orderedTasks = graph
+    .values()
+    .toArray()
+    .toSorted(
+      (left, right) =>
+        Number(priorityTasks.has(right.id)) -
+        Number(priorityTasks.has(left.id)),
+    );
   const transition = (
     task: CompiledTask,
     status: TaskStatus,
@@ -97,13 +118,18 @@ export async function executeGraph(
   };
   try {
     if (options.cache !== undefined && !controller.signal.aborted)
-      cached = await prepareCachedTasks(graph, options.cache, options.onEvent);
+      cached = await prepareCachedTasks(
+        graph,
+        options.cache,
+        options.onEvent,
+        forceRunTasks,
+      );
     while (
       states.values().some((state) => state === "pending") ||
       active.size > 0
     ) {
       let progressed = false;
-      for (const task of graph.values()) {
+      for (const task of orderedTasks) {
         if (states.get(task.id) !== "pending") continue;
         const dependencies = task.dependsOn.map((id) => states.get(id));
         if (

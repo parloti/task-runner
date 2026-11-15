@@ -22,6 +22,20 @@ describe("graph compilation", () => {
     expect(graph.keys().toArray()).toEqual(["start", "left", "right", "end"]);
   });
 
+  it("adds priority targets before the requested entrypoint", () => {
+    // Arrange & Act
+    const graph = compileGraph(config, "end", ["unrelated"]);
+
+    // Assert
+    expect(graph.keys().toArray()).toEqual([
+      "unrelated",
+      "start",
+      "left",
+      "right",
+      "end",
+    ]);
+  });
+
   it("starts a command without selecting command or group prerequisites", () => {
     // Arrange
     const workflow: RunnerConfig = {

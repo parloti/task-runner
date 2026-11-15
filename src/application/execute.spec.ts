@@ -6,6 +6,7 @@ import {
   compileGraph,
   normalizeExecutionError,
   TaskCancelledError,
+  taskReference,
 } from "../domain";
 import { executeGraph } from "./execute";
 
@@ -30,6 +31,54 @@ function graph() {
 }
 
 describe("execution", () => {
+  it("schedules priority tasks and their shared prerequisites before ordinary work", async () => {
+    // Arrange
+    const plan = compileGraph(
+      {
+        packages: {
+          ".": {
+            current: { run: { command: "current", kind: "shell" } },
+            first: {
+              dependsOn: ["shared"],
+              run: { command: "first", kind: "shell" },
+            },
+            plan: { dependsOn: ["current", "shared", "first", "second"] },
+            second: {
+              dependsOn: ["shared"],
+              run: { command: "second", kind: "shell" },
+            },
+            shared: { run: { command: "shared", kind: "shell" } },
+          },
+        },
+        version: 2,
+      },
+      "plan",
+      ["first", "second"],
+    );
+    const calls: string[] = [];
+
+    // Act
+    const result = await executeGraph(
+      plan,
+      (task) => {
+        calls.push(task.id);
+        return Promise.resolve();
+      },
+      {
+        concurrency: 1,
+        priorityTasks: [
+          taskReference(".", "first"),
+          taskReference(".", "second"),
+          taskReference(".", "missing"),
+        ],
+      },
+    );
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(calls).toEqual(["shared", "first", "second", "current"]);
+  });
+
   it.each([1, 2, 3])(
     "limits leaf concurrency to %i and runs shared work once",
     async (concurrency) => {

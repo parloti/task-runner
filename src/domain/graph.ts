@@ -15,12 +15,15 @@ const taskId = make<TaskId>();
  * Validate task definitions and compile the selected target graph.
  * @param config Version-2 configuration containing package task definitions.
  * @param target Local or qualified entrypoint reference.
+ * @param priorityTargets Additional task references selected before the
+ * entrypoint.
  * @returns Reachable tasks keyed by canonical task ID.
- * @example `compileGraph(config, "build")` prepares the `build` graph.
+ * @example `compileGraph(config, "check", ["lint"])` adds `lint` before `check`.
  */
 export function compileGraph(
   config: RunnerConfig,
   target: string,
+  priorityTargets: readonly string[] = [],
 ): ReadonlyMap<TaskId, CompiledTask> {
   const graph = new Map<TaskId, CompiledTask>();
   const definitions = new Map<
@@ -75,6 +78,8 @@ export function compileGraph(
       for (const dependency of task.dependsOn) select(dependency);
     selected.set(name, task);
   };
+  for (const priorityTarget of priorityTargets)
+    select(resolveTaskReference(".", priorityTarget));
   select(targetId);
   for (const [name, task] of selected) {
     selected.set(name, {

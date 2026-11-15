@@ -6,8 +6,8 @@
   declared in version-2 JSON.
 - An optional typed config constructor that formats caller-supplied task
   definitions as runner JSON.
-- No package discovery, tool inference, workflow selection, automatic retries,
-  watch daemon, remote execution, or plugin framework.
+- No package discovery, tool inference, workflow selection, watch daemon, remote
+  execution, or plugin framework.
 
 ## Execution contract
 
@@ -54,6 +54,14 @@
   the CLI or `defaults` overrides either default.
 - A command failure stops admission, blocks dependent work, cancels active work,
   and awaits owned subprocess/stream cleanup. Failure context is preserved.
+- Command tasks whose final state is `failed` are saved as candidates for the
+  next runner invocation. The record is scoped to the selected config file.
+  Still-configured candidates are added to that invocation's selected graph and
+  receive scheduler priority alongside its requested entrypoint. Canceled,
+  blocked, and removed tasks are not retried. Cached groups containing a
+  candidate are bypassed so it executes. Each completed run replaces the saved
+  candidates, so a run with no failed tasks clears them. Overlapping runs retain
+  the candidates from the latest completed run.
 - Library callers receive task states and errors without process-global changes.
   CLI exit codes are 0 for success, 1 for failure, 130 for interrupt, and 143
   for termination.
@@ -83,6 +91,10 @@
   publish partial records. Records contain fingerprints, not source or
   environment contents. Cache read, validation, and write errors fail visibly.
   Symbolic-link inputs are rejected rather than silently ignoring their targets.
+- The latest run's failed command IDs are also stored in `.cache/task-runner`,
+  independently of invocation logs and cache fingerprints, scoped to the
+  selected config file. Overlapping runs preserve completion order. Runs with no
+  failed tasks replace this list with an empty list.
 - `--no-cache`, or library option `noCache: true`, bypasses all cache reads and
   executes the complete selected plan. Successful execution refreshes entries.
   This does not select tasks outside that plan and cannot affect direct npm calls.
@@ -118,7 +130,9 @@
   Groups contain their prerequisites; command prerequisites appear in execution
   order within the containing group. Shared workspace tasks appear once under
   their matching reachable validation group, otherwise under their first
-  containing group. Empty cross-package aggregate wrappers are omitted.
+  containing group. Remembered failed tasks outside the requested target appear
+  as top-level rows alongside the requested tree. Empty cross-package aggregate
+  wrappers are omitted.
   Display ownership never controls execution.
 - Every group establishes package context for its subtasks; matching
   `validate:<workspace>` groups establish the named workspace context.

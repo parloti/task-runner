@@ -1,13 +1,13 @@
 # Architecture
 
-| Component            | Ownership                                                                                             | Dependencies                          |
-| -------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `src/domain`         | Task/config/event contracts, graph compilation, readable task names, and optional preset construction | `ts-brand`                            |
-| `src/application`    | Scheduler, executor/cache ports, cache-scope selection, and run options                               | Domain                                |
-| `src/infrastructure` | Config parsing, processes, npm CLI discovery, file fingerprints, and atomic cache records             | Application, domain, and Node         |
-| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                                                  | Application, domain, Node, log-update |
-| `src/bootstrap`      | Runtime composition, logging, signals, executable                                                     | All layers                            |
-| `tests/e2e`          | Real subprocess and consumer behavior                                                                 | Public/runtime boundaries             |
+| Component            | Ownership                                                                                                | Dependencies                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `src/domain`         | Task/config/event contracts, graph compilation, readable task names, and optional preset construction    | `ts-brand`                            |
+| `src/application`    | Scheduler, executor/cache ports, cache-scope selection, and run options                                  | Domain                                |
+| `src/infrastructure` | Config parsing, processes, npm CLI discovery, file fingerprints, atomic records, and cross-process locks | Application, domain, and Node         |
+| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                                                     | Application, domain, Node, log-update |
+| `src/bootstrap`      | Runtime composition, logging, signals, executable                                                        | All layers                            |
+| `tests/e2e`          | Real subprocess and consumer behavior                                                                    | Public/runtime boundaries             |
 
 - Version-2 package-local JSON is validated at the IO boundary, including
   optional runner defaults. Bootstrap combines configured defaults with explicit
@@ -23,6 +23,9 @@
   After selection, command dependencies are retained only when their targets
   are selected. Groups explicitly list their members; aliases use the same rule.
 - A single scheduler admits ready leaf commands and owns cancellation/state.
+- The validated plan can include prior failed command targets alongside the
+  requested entrypoint. The scheduler gives those targets and their selected
+  prerequisites queue priority without creating a second execution path.
 - Caller-declared `CacheDefinition` values survive config parsing, preset
   construction, and graph compilation. Application cache planning checks outer
   groups first and marks selected members reusable without changing task
@@ -34,6 +37,11 @@
   `.cache/task-runner` contains atomic successful-result records independently
   of transient logs. Bootstrap injects this adapter, and `noCache` bypasses reads
   while refreshing successful results. No artifact archive or remote cache exists.
+- Infrastructure stores failed task IDs from the latest completed run in a
+  config-scoped record under `.cache/task-runner`; locked, timestamp-ordered
+  updates keep overlapping runs from replacing newer results. Bootstrap adds
+  still-configured command IDs to the next plan, and application scheduling
+  prioritizes them with their selected prerequisites.
   Globby performs dot-inclusive discovery behind the fingerprint adapter.
 - Process adapters implement npm/shell execution, tree termination, and streams.
 - Domain execution errors distinguish expected command failure/cancellation.
@@ -48,7 +56,9 @@
 - CLI progress and library subscribers receive the same scheduler events.
 - `onPlan` delivers the selected validated graph before execution; `onEvent`
   delivers state transitions. The presentation-only view deduplicates shared
-  tasks and groups prerequisites without interpreting shell commands.
+  tasks and groups prerequisites without interpreting shell commands. Prior
+  failed tasks outside the requested target appear as top-level rows in that
+  same plan.
 - Presentation tracks group wall-clock durations from the first activity in
   their owned display subtree and freezes them at terminal events. Shared work
   displayed elsewhere does not activate a waiting group.

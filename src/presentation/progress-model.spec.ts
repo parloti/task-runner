@@ -41,6 +41,22 @@ const event = (
 afterEach(() => vi.useRealTimers());
 
 describe("nested progress model", () => {
+  it("shows a remembered failed task outside the requested tree", () => {
+    // Arrange
+    const model = new ProgressModel(
+      graphFor(task("requested"), task("remembered")),
+      "requested",
+      false,
+    );
+
+    // Act
+    model.update(event("remembered", "failed"));
+
+    // Assert
+    expect(model.summary()).toBe("Tasks: 2 | pending: 1 | failed: 1");
+    expect(model.frame(0)).toContain("remembered (failed)");
+  });
+
   it("shows cached successes separately and preserves the previous completion time", () => {
     // Arrange
     const model = new ProgressModel(
