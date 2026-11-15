@@ -12,8 +12,9 @@
 - Version-2 package-local JSON is validated at the IO boundary, including
   optional runner defaults. Bootstrap combines configured defaults with explicit
   CLI values before presentation starts; runtime defaults are also applied by
-  the library runner. Graph compilation resolves local/qualified references
-  into one graph with canonical readable IDs (root names or
+  the library runner, including cache bypass. Graph compilation resolves
+  local and qualified references into one graph with canonical readable IDs
+  (root names or
   `<package>#<task>`). No serialized arrays or entrypoint map.
 - The runner reads the explicit config and does not inspect package manifests.
   npm command execution is delegated to the configured npm CLI invocation,

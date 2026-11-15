@@ -43,6 +43,7 @@ export interface RunnerDefaults {
   readonly collapse?: boolean;
   readonly concurrency?: number;
   readonly maxTasks?: number;
+  readonly noCache?: boolean;
   readonly scroll?: boolean;
 }
 

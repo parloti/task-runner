@@ -197,13 +197,15 @@ function parseDefaults(value: unknown): RunnerDefaults {
   const input = object(value, "defaults");
   knownKeys(
     input,
-    ["ci", "collapse", "concurrency", "maxTasks", "scroll"],
+    ["ci", "collapse", "concurrency", "maxTasks", "noCache", "scroll"],
     "defaults",
   );
   if (input["ci"] !== undefined && typeof input["ci"] !== "boolean")
     throw new TypeError("Expected boolean: defaults ci");
   if (input["collapse"] !== undefined && typeof input["collapse"] !== "boolean")
     throw new TypeError("Expected boolean: defaults collapse");
+  if (input["noCache"] !== undefined && typeof input["noCache"] !== "boolean")
+    throw new TypeError("Expected boolean: defaults noCache");
   if (input["scroll"] !== undefined && typeof input["scroll"] !== "boolean")
     throw new TypeError("Expected boolean: defaults scroll");
   if (
@@ -224,12 +226,14 @@ function parseDefaults(value: unknown): RunnerDefaults {
   const collapse = input["collapse"];
   const concurrency = input["concurrency"];
   const maxTasks = input["maxTasks"];
+  const noCache = input["noCache"];
   const scroll = input["scroll"];
   return {
     ...(ci !== undefined && { ci }),
     ...(collapse !== undefined && { collapse }),
     ...(concurrency !== undefined && { concurrency }),
     ...(maxTasks !== undefined && { maxTasks }),
+    ...(noCache !== undefined && { noCache }),
     ...(scroll !== undefined && { scroll }),
   };
 }

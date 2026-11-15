@@ -86,7 +86,10 @@ export async function runTasks(
       graph,
       createProcessExecutor(root, directory, ci, packagePaths),
       {
-        cache: createTaskCache(root, options.noCache),
+        cache: createTaskCache(
+          root,
+          options.noCache ?? config.defaults?.noCache,
+        ),
         concurrency,
         forceRunTasks: priorityTasks,
         onEvent,

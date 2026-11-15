@@ -65,11 +65,11 @@ the project. The project-maintenance tool or project owner that writes this file
 owns those decisions.
 
 The optional `defaults` object sets runner behavior when the corresponding CLI
-option is omitted. It accepts `ci`, `concurrency`, `collapse`, `maxTasks`, and
-`scroll`. An explicit CLI option takes precedence over its configured default;
-otherwise built-in defaults apply. The `CI` environment variable still enables
-CI behavior, and an explicitly configured concurrency can override its
-sequential concurrency default.
+option is omitted. It accepts `ci`, `concurrency`, `collapse`, `maxTasks`,
+`noCache`, and `scroll`. An explicit CLI option takes precedence over its
+configured default; otherwise built-in defaults apply. The `CI` environment
+variable still enables CI behavior, and an explicitly configured concurrency
+can override its sequential concurrency default.
 
 Keep `compile` and `test` as ordinary npm scripts; add
 `"check": "task-runner run check"` to `package.json`. Task references are explicit,
@@ -145,10 +145,11 @@ Progress shows `cached` and the prior success time; JSONL events explain misses.
 Completed checks remain reusable if another task fails. Artifacts are verified
 in place, not restored; external side effects must not be cached.
 
-`--no-cache` or `runTasks("check", { noCache: true })` runs the complete selected
-plan and refreshes successful records. Direct npm calls bypass the runner and
-remain unaffected. Cache IO or malformed-record failures are reported; bypass
-can repair malformed entries through successful execution.
+`defaults.noCache: true`, `--no-cache`, or `runTasks("check", { noCache: true })`
+runs the complete selected plan and refreshes successful records. Direct npm
+calls bypass the runner and remain unaffected. Cache IO or malformed-record
+failures are reported; bypass can repair malformed entries through successful
+execution.
 
 ### Previous-run failed tasks
 

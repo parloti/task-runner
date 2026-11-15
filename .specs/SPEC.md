@@ -15,10 +15,10 @@
   cache bypass, and optional cancellation signal. The config declares every package path,
   task, dependency, and npm script reference the runner may execute.
 - The optional root `defaults` object can set `ci`, `concurrency`, `collapse`,
-  `maxTasks`, and `scroll`. Explicit CLI values take precedence over configured
-  defaults; omitted values use built-in defaults. A non-empty `CI` environment
-  variable continues to enable CI behavior. Configured or CLI concurrency can
-  override CI's sequential concurrency default.
+  `maxTasks`, `noCache`, and `scroll`. Explicit CLI values take precedence over
+  configured defaults; omitted values use built-in defaults. A non-empty `CI`
+  environment variable continues to enable CI behavior. Configured or CLI
+  concurrency can override CI's sequential concurrency default.
 - Tasks live in `packages[path][name]`, without task-level package fields
   or entrypoint mappings. Any local task is directly invocable. Bare dependency
   names resolve locally; `<package-path>#<task>` selects another package and
@@ -95,8 +95,9 @@
   independently of invocation logs and cache fingerprints, scoped to the
   selected config file. Overlapping runs preserve completion order. Runs with no
   failed tasks replace this list with an empty list.
-- `--no-cache`, or library option `noCache: true`, bypasses all cache reads and
-  executes the complete selected plan. Successful execution refreshes entries.
+- `defaults.noCache: true`, `--no-cache`, or library option `noCache: true`
+  bypasses all cache reads and executes the complete selected plan. Successful
+  execution refreshes entries.
   This does not select tasks outside that plan and cannot affect direct npm calls.
 - Progress and JSONL events distinguish `cached` from newly `succeeded` tasks,
   retain the reused success timestamp, and explain cache misses. Artifacts are
