@@ -56,7 +56,7 @@ sequential concurrency default.</p>
 not inferred from shell text. Use <code>{ &quot;kind&quot;: &quot;shell&quot;, &quot;command&quot;: &quot;...&quot; }</code> for an
 intentional platform-specific shell command. npm tasks accept an <code>args</code> array,
 forwarded after <code>npm run &lt;script&gt; --</code>, and preserve npm lifecycle hooks.</p>
-<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span>
+<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span><br/><span class="hl-1">npm run check -- --no-cache</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Package keys are relative paths using <code>/</code>, or <code>.</code> for the root. Each package
@@ -83,6 +83,26 @@ directories select their nearest containing configured package.
 Settings such as <code>--concurrency</code>, <code>--ci</code>, <code>--collapse</code>, <code>--max-tasks</code>, and
 <code>--scroll</code> override matching values in <code>defaults</code>.
 The schema is exported as <code>@codeperfect/task-runner/schema.json</code>.</p>
+<h3 id="persistent-successful-result-cache" class="tsd-anchor-link">Persistent successful-result cache<a href="#persistent-successful-result-cache" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Opt deterministic commands or groups into caching with explicit file inputs:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;cache&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;inputs&quot;</span><span class="hl-1">: [</span><br/><span class="hl-1">      </span><span class="hl-2">&quot;src/**/*&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-2">&quot;package.json&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-2">&quot;package-lock.json&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-2">&quot;tsconfig*.json&quot;</span><br/><span class="hl-1">    ],</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;exclude&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;src/generated/**&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">    </span><span class="hl-4">&quot;env&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;NODE_ENV&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;NODE_OPTIONS&quot;</span><span class="hl-1">]</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">&quot;run&quot;</span><span class="hl-1">: { </span><span class="hl-4">&quot;kind&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-4">&quot;script&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;test&quot;</span><span class="hl-1"> }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Patterns are relative to the configuration root, including for workspace tasks.
+Include all relevant configuration, dependency sources, and environment names;
+the runner does not infer them. Groups can also declare <code>outputs</code>, such as
+<code>[&quot;packages/lib/dist/**/*&quot;]</code>, to require intact artifacts before skipping their
+selected commands. Every output pattern must match a file.</p>
+<p>Successful results persist in <code>.cache/task-runner</code> (add <code>.cache/</code> to <code>.gitignore</code>).
+Content changes, added/deleted inputs, command changes, relevant environment or
+Node/platform changes, and missing/modified outputs invalidate entries.
+Progress shows <code>cached</code> and the prior success time; JSONL events explain misses.
+Completed checks remain reusable if another task fails. Artifacts are verified
+in place, not restored; external side effects must not be cached.</p>
+<p><code>--no-cache</code> or <code>runTasks(&quot;check&quot;, { noCache: true })</code> runs the complete selected
+plan and refreshes successful records. Direct npm calls bypass the runner and
+remain unaffected. Cache IO or malformed-record failures are reported; bypass
+can repair malformed entries through successful execution.</p>
 <h2 id="library-and-presets" class="tsd-anchor-link">Library and presets<a href="#library-and-presets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <pre><code class="typescript"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">runTasks</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">createWorkspacePreset</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner/presets&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">preset</span><span class="hl-1"> = </span><span class="hl-0">createWorkspacePreset</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-7">packages:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;.&quot;</span><span class="hl-7">:</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">compile:</span><span class="hl-1"> { </span><span class="hl-7">run:</span><span class="hl-1"> { </span><span class="hl-7">kind:</span><span class="hl-1"> </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-7">script:</span><span class="hl-1"> </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-7">check:</span><span class="hl-1"> { </span><span class="hl-7">dependsOn:</span><span class="hl-1"> [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">] },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">runTasks</span><span class="hl-1">(</span><span class="hl-2">&quot;check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-7">cwd:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/repository&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">signal:</span><span class="hl-1"> </span><span class="hl-7">abortController</span><span class="hl-1">.</span><span class="hl-7">signal</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">onEvent</span><span class="hl-7">:</span><span class="hl-1"> (</span><span class="hl-7">event</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-7">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">status</span><span class="hl-1">, </span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">taskId</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><span class="hl-9">// Write preset to task-runner.json; npm scripts remain in package.json.</span>
 </code><button type="button">Copy</button></pre>
@@ -99,7 +119,8 @@ errors; they never set process exit status or install global signal handlers.</p
 <h2 id="runtime-behavior" class="tsd-anchor-link">Runtime behavior<a href="#runtime-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
 <li>Validate the configuration, task references, and cycles before execution.</li>
-<li>The runner does not read <code>package.json</code>. Required npm scripts are attempted
+<li>The runner does not interpret <code>package.json</code>. Declared cache inputs can hash
+its contents without inspecting scripts. Required npm scripts are attempted
 through npm and fail as task execution if missing; an optional npm script
 adds <code>--if-present</code> and succeeds when absent.</li>
 <li>Execute shared tasks once per invocation, with one global leaf-command limit.</li>
@@ -196,6 +217,9 @@ For local setup and pull request guidance, see
 <li><a href="#install"><span>Install</span></a></li>
 <li><a href="#validation"><span>Validation</span></a></li>
 <li><a href="#configuration"><span>Configuration</span></a></li>
+<li>
+<ul>
+<li><a href="#persistent-successful-result-cache"><span>Persistent successful-<wbr/>result cache</span></a></li></ul></li>
 <li><a href="#library-and-presets"><span>Library and presets</span></a></li>
 <li><a href="#runtime-behavior"><span>Runtime behavior</span></a></li></ul></div></details></div>
 <div class="site-menu">
