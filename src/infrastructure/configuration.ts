@@ -9,6 +9,7 @@ import type {
 } from "../domain";
 
 import { resolveTaskReference, taskReference } from "../domain";
+import { parseCacheDefinition } from "./cache-configuration";
 
 /**
  * Locate the nearest task-runner configuration or resolve an explicit path.
@@ -106,7 +107,7 @@ export function parseConfiguration(value: unknown): RunnerConfig {
     for (const [taskName, value] of taskEntries) {
       const id = taskReference(name, taskName);
       const task = object(value, id);
-      knownKeys(task, ["dependsOn", "run"], `task ${id}`);
+      knownKeys(task, ["cache", "dependsOn", "run"], `task ${id}`);
       const dependencies =
         task["dependsOn"] === undefined
           ? []
@@ -115,6 +116,9 @@ export function parseConfiguration(value: unknown): RunnerConfig {
               return reference;
             });
       tasks[taskName] = {
+        ...(task["cache"] !== undefined && {
+          cache: parseCacheDefinition(task["cache"]),
+        }),
         ...(dependencies.length > 0 && { dependsOn: dependencies }),
         ...(task["run"] !== undefined && { run: command(task["run"]) }),
       };

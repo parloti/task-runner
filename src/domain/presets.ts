@@ -22,6 +22,7 @@ export function createWorkspacePreset(
     const normalizedTasks: Record<string, TaskDefinition> = {};
     for (const [name, definition] of Object.entries(tasks)) {
       normalizedTasks[name] = {
+        ...(definition.cache !== undefined && { cache: definition.cache }),
         ...(definition.dependsOn !== undefined &&
           definition.dependsOn.length > 0 && {
             dependsOn: definition.dependsOn,

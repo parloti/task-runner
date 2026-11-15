@@ -8,7 +8,7 @@ describe("createWorkspacePreset", () => {
     const packages = {
       ".": {
         build: { dependsOn: [], run: { kind: "npm", script: "build" } },
-        validate: { dependsOn: ["build"] },
+        validate: { cache: { inputs: ["src/**/*"] }, dependsOn: ["build"] },
       },
       "packages/lib": {
         test: { run: { command: "node test.js", kind: "shell" } },
@@ -27,7 +27,7 @@ describe("createWorkspacePreset", () => {
       packages: {
         ".": {
           build: { run: { kind: "npm", script: "build" } },
-          validate: { dependsOn: ["build"] },
+          validate: { cache: { inputs: ["src/**/*"] }, dependsOn: ["build"] },
         },
         "packages/lib": {
           test: { run: { command: "node test.js", kind: "shell" } },

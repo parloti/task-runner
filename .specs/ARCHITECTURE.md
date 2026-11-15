@@ -3,8 +3,8 @@
 | Component            | Ownership                                                                                             | Dependencies                          |
 | -------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `src/domain`         | Task/config/event contracts, graph compilation, readable task names, and optional preset construction | `ts-brand`                            |
-| `src/application`    | Scheduler, executor port, and run options                                                             | Domain                                |
-| `src/infrastructure` | Config parsing, processes, npm CLI discovery                                                          | Domain and Node                       |
+| `src/application`    | Scheduler, executor/cache ports, cache-scope selection, and run options                               | Domain                                |
+| `src/infrastructure` | Config parsing, processes, npm CLI discovery, file fingerprints, and atomic cache records             | Application, domain, and Node         |
 | `src/presentation`   | CLI arguments, nested progress view, terminal redraw                                                  | Application, domain, Node, log-update |
 | `src/bootstrap`      | Runtime composition, logging, signals, executable                                                     | All layers                            |
 | `tests/e2e`          | Real subprocess and consumer behavior                                                                 | Public/runtime boundaries             |
@@ -23,6 +23,18 @@
   After selection, command dependencies are retained only when their targets
   are selected. Groups explicitly list their members; aliases use the same rule.
 - A single scheduler admits ready leaf commands and owns cancellation/state.
+- Caller-declared `CacheDefinition` values survive config parsing, preset
+  construction, and graph compilation. Application cache planning checks outer
+  groups first and marks selected members reusable without changing task
+  selection or dependency ordering. `cached` is a successful terminal state
+  distinct from new execution. Completed checkpoints are persisted after owned
+  commands settle; cache failures remain unsuccessful and retain command errors.
+- Infrastructure hashes explicit input/output files and named environment
+  values; no manifest interpretation or dependency discovery is involved.
+  `.cache/task-runner` contains atomic successful-result records independently
+  of transient logs. Bootstrap injects this adapter, and `noCache` bypasses reads
+  while refreshing successful results. No artifact archive or remote cache exists.
+  Globby performs dot-inclusive discovery behind the fingerprint adapter.
 - Process adapters implement npm/shell execution, tree termination, and streams.
 - Domain execution errors distinguish expected command failure/cancellation.
   The CLI prints concise command failures; cancellation retains status without

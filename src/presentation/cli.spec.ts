@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { parseArguments } from "./cli";
 
 describe("command-line contract", () => {
+  it("parses cache bypass without changing the selected entrypoint", () => {
+    // Arrange & Act
+    const result = parseArguments(["run", "validate", "--no-cache"]);
+    // Assert
+    expect(result.entrypoint).toBe("validate");
+    expect(result.options.noCache).toBe(true);
+    expect(parseArguments(["validate"]).options).not.toHaveProperty("noCache");
+  });
   it("accepts --scroll without changing execution options", () => {
     // Arrange & Act
     const result = parseArguments([

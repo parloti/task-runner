@@ -9,6 +9,7 @@ export type { WorkspacePresetInput } from "./presets";
 export { qualifiedTaskName, taskName } from "./task-name";
 export { resolveTaskReference, taskReference } from "./task-reference";
 export type {
+  CacheDefinition,
   Command,
   CompiledTask,
   ExecuteCommand,

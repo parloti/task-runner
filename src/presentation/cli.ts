@@ -30,6 +30,7 @@ export function parseArguments(args: string[]): ParseArguments {
       config: { type: "string" },
       help: { short: "h", type: "boolean" },
       "max-tasks": { type: "string" },
+      "no-cache": { type: "boolean" },
       "no-scroll": { type: "boolean" },
       package: { type: "string" },
       scroll: { default: true, type: "boolean" },
@@ -39,7 +40,7 @@ export function parseArguments(args: string[]): ParseArguments {
   const names = positionals[0] === "run" ? positionals.slice(1) : positionals;
   if (!values.help && (names.length !== 1 || !names[0]))
     throw new Error(
-      "Usage: task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--collapse true|false] [--max-tasks n] [--no-scroll]",
+      "Usage: task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
     );
   const concurrency =
     values.concurrency === undefined ? undefined : Number(values.concurrency);
@@ -74,6 +75,7 @@ export function parseArguments(args: string[]): ParseArguments {
         collapse: values.collapse === "true",
       }),
       ...(maxTasks !== undefined && { maxTasks }),
+      ...(values["no-cache"] !== undefined && { noCache: values["no-cache"] }),
       scroll,
     },
   };

@@ -19,6 +19,10 @@
 - Consumers own package discovery, task-group policy, npm script definitions,
   and selection of direct npm wrappers. The runner consumes the resulting
   explicit config and never infers repository workflows.
+- Persistent caching uses only caller-declared inputs, outputs, and environment;
+  hash manifest contents without inspecting scripts or inferring dependencies.
+  Preserve direct npm calls; `--no-cache` forces the selected runner plan and
+  refreshes successful records. Never cache failed or cancelled work.
 - Keep nested terminal progress presentation-only; use the validated plan for
   hierarchy and scheduler events for state. CI/non-TTY output must not animate.
 - Qualify cross-workspace task labels as `<unique-package-suffix>:<task>`, using

@@ -7,12 +7,12 @@
 - An optional typed config constructor that formats caller-supplied task
   definitions as runner JSON.
 - No package discovery, tool inference, workflow selection, automatic retries,
-  caching, watch daemon, remote execution, or plugin framework.
+  watch daemon, remote execution, or plugin framework.
 
 ## Execution contract
 
 - Input: version-2 JSON config, task name, package scope, CI/concurrency options,
-  and optional cancellation signal. The config declares every package path,
+  cache bypass, and optional cancellation signal. The config declares every package path,
   task, dependency, and npm script reference the runner may execute.
 - The optional root `defaults` object can set `ci`, `concurrency`, `collapse`,
   `maxTasks`, and `scroll`. Explicit CLI values take precedence over configured
@@ -36,7 +36,7 @@
   configured package, including when called from a nested directory.
 - Tasks explicitly declare task dependencies and an optional npm/shell command.
   A task with no command completes after its prerequisites.
-- The runner does not discover packages, read `package.json`, or decide which
+- The runner does not discover packages, inspect package manifests, or decide which
   scripts, tasks, or task groups belong to a project. It executes only commands
   declared in the config.
 - Preflight validates the complete configuration, references, cycles, and
@@ -57,6 +57,38 @@
 - Library callers receive task states and errors without process-global changes.
   CLI exit codes are 0 for success, 1 for failure, 130 for interrupt, and 143
   for termination.
+
+## Persistent task cache
+
+- Tasks opt in with `cache.inputs`, a non-empty list of config-root-relative
+  file patterns. Optional `exclude` patterns narrow inputs; `outputs` declares
+  artifacts that must still match; `env` names relevant environment variables.
+  The runner hashes declared files as opaque content, including manifests or
+  lockfiles when the caller lists them. It never infers scripts or dependencies.
+  Pattern matching includes hidden files and directories.
+- A successful command or group can be reused across invocations when its
+  input file names and contents, declared environment, Node version, platform,
+  architecture, selected member definitions, and output contents match.
+  Adding or deleting an input invalidates the entry. Every declared output
+  pattern must match at least one file. Missing or modified outputs force a run.
+- Cached groups reuse their selected members, including shared tasks, without
+  starting commands. Dependency ordering still applies. Uncached tasks continue
+  to execute normally. Only deterministic tasks with declared inputs and
+  exclusively owned outputs should opt in; external state is not inferred.
+- Successful checkpoints survive later task failures or cancellation. Failed,
+  blocked, and cancelled tasks are never recorded. Inputs changed during a run
+  prevent recording a new successful entry.
+- Cache records live in `.cache/task-runner` independently of invocation logs.
+  Writes replace individual records atomically; overlapping invocations cannot
+  publish partial records. Records contain fingerprints, not source or
+  environment contents. Cache read, validation, and write errors fail visibly.
+  Symbolic-link inputs are rejected rather than silently ignoring their targets.
+- `--no-cache`, or library option `noCache: true`, bypasses all cache reads and
+  executes the complete selected plan. Successful execution refreshes entries.
+  This does not select tasks outside that plan and cannot affect direct npm calls.
+- Progress and JSONL events distinguish `cached` from newly `succeeded` tasks,
+  retain the reused success timestamp, and explain cache misses. Artifacts are
+  verified in place, not restored from an archive. No remote cache is used.
 
 ## Diagnostics
 
@@ -172,6 +204,7 @@
 - Shell tasks use the host shell; npm tasks use argument arrays.
 - Windows owned-tree cancellation is forced; POSIX allows a bounded graceful
   shutdown before escalation. No unrelated process is a cancellation target.
-- Package and task identity reuse is run-local, not a persistent build cache.
+- Task identity reuse is run-local; explicitly configured successful results
+  also support the persistent cache described above.
 - Published as `@codeperfect/task-runner`; the package exposes the `task-runner`
   bin from the compiled distribution and excludes pack archives.

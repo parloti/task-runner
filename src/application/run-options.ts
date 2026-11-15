@@ -5,6 +5,7 @@ export interface RunOptions {
   readonly concurrency?: number;
   readonly config?: string;
   readonly cwd?: string;
+  readonly noCache?: boolean;
   readonly onEvent?: (event: TaskEvent) => void;
   readonly onPlan?: (
     graph: ReadonlyMap<TaskId, CompiledTask>,

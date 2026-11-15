@@ -84,6 +84,7 @@ npm run check -- --concurrency 3
 npm run check -- --collapse false
 npm run check -- --collapse false --max-tasks 150
 npm run check -- --no-scroll --collapse false --max-tasks 1000
+npm run check -- --no-cache
 ```
 
 Package keys are relative paths using `/`, or `.` for the root. Each package
@@ -110,6 +111,44 @@ directories select their nearest containing configured package.
 Settings such as `--concurrency`, `--ci`, `--collapse`, `--max-tasks`, and
 `--scroll` override matching values in `defaults`.
 The schema is exported as `@codeperfect/task-runner/schema.json`.
+
+### Persistent successful-result cache
+
+Opt deterministic commands or groups into caching with explicit file inputs:
+
+```json
+{
+  "cache": {
+    "inputs": [
+      "src/**/*",
+      "package.json",
+      "package-lock.json",
+      "tsconfig*.json"
+    ],
+    "exclude": ["src/generated/**"],
+    "env": ["NODE_ENV", "NODE_OPTIONS"]
+  },
+  "run": { "kind": "npm", "script": "test" }
+}
+```
+
+Patterns are relative to the configuration root, including for workspace tasks.
+Include all relevant configuration, dependency sources, and environment names;
+the runner does not infer them. Groups can also declare `outputs`, such as
+`["packages/lib/dist/**/*"]`, to require intact artifacts before skipping their
+selected commands. Every output pattern must match a file.
+
+Successful results persist in `.cache/task-runner` (add `.cache/` to `.gitignore`).
+Content changes, added/deleted inputs, command changes, relevant environment or
+Node/platform changes, and missing/modified outputs invalidate entries.
+Progress shows `cached` and the prior success time; JSONL events explain misses.
+Completed checks remain reusable if another task fails. Artifacts are verified
+in place, not restored; external side effects must not be cached.
+
+`--no-cache` or `runTasks("check", { noCache: true })` runs the complete selected
+plan and refreshes successful records. Direct npm calls bypass the runner and
+remain unaffected. Cache IO or malformed-record failures are reported; bypass
+can repair malformed entries through successful execution.
 
 ## Library and presets
 
@@ -148,7 +187,8 @@ errors; they never set process exit status or install global signal handlers.
 ## Runtime behavior
 
 - Validate the configuration, task references, and cycles before execution.
-- The runner does not read `package.json`. Required npm scripts are attempted
+- The runner does not interpret `package.json`. Declared cache inputs can hash
+  its contents without inspecting scripts. Required npm scripts are attempted
   through npm and fail as task execution if missing; an optional npm script
   adds `--if-present` and succeeds when absent.
 - Execute shared tasks once per invocation, with one global leaf-command limit.

@@ -41,6 +41,25 @@ const event = (
 afterEach(() => vi.useRealTimers());
 
 describe("nested progress model", () => {
+  it("shows cached successes separately and preserves the previous completion time", () => {
+    // Arrange
+    const model = new ProgressModel(
+      graphFor(task("validate", ["test"], false), task("test")),
+      "validate",
+      false,
+    );
+    const completedAt = "2026-11-15T17:00:00.000Z";
+    // Act
+    model.update({ ...event("test", "cached"), completedAt, durationMs: 0 });
+    model.update({
+      ...event("validate", "cached"),
+      completedAt,
+      durationMs: 0,
+    });
+    // Assert
+    expect(model.summary()).toBe("Tasks: 1 | cached: 1");
+    expect(model.frame(0)).toContain(`last success: ${completedAt}`);
+  });
   it.each([undefined, true, false])(
     "keeps unstarted nested groups collapsed with collapse=%s",
     (collapse) => {

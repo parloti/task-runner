@@ -20,6 +20,7 @@ export interface ProgressRow {
 
 export const markers: Record<Exclude<TaskStatus, "running">, string> = {
   blocked: "!",
+  cached: "=",
   cancelled: "~",
   failed: "x",
   pending: ".",
@@ -29,6 +30,7 @@ export const markers: Record<Exclude<TaskStatus, "running">, string> = {
 
 export const liveMarkers: Record<Exclude<TaskStatus, "running">, string> = {
   blocked: "\u{26A0}",
+  cached: "=",
   cancelled: "\u{25A0}",
   failed: "\u{2716}",
   pending: "\u{25A1}",
@@ -38,6 +40,7 @@ export const liveMarkers: Record<Exclude<TaskStatus, "running">, string> = {
 
 export const colors = {
   blocked: "yellow",
+  cached: "blue",
   cancelled: "magenta",
   failed: "red",
   pending: "gray",

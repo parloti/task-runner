@@ -47,6 +47,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "cache": { "$ref": "#/$defs/cache" },
         "dependsOn": {
           "description": "Group members for commandless tasks. For commands, ordering constraints only between tasks already selected; earlier tasks are not automatically included.",
           "type": "array",
@@ -80,6 +81,36 @@
           ]
         }
       }
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs"],
+      "properties": {
+        "inputs": {
+          "description": "Config-root-relative file patterns whose names and contents determine reuse.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/cachePattern" }
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cachePattern" }
+        },
+        "outputs": {
+          "description": "Artifact patterns; every pattern must match files whose contents remain unchanged.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/cachePattern" }
+        },
+        "env": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "\\S" }
+        }
+      }
+    },
+    "cachePattern": {
+      "type": "string",
+      "pattern": "^(?![!/])(?!.*:)(?!.*\\\\(?![()*?{}\\[\\]!]))(?!.*(?:^|/)\\.{1,2}(?:/|$)).*\\S.*$"
     }
   }
 }

@@ -52,6 +52,9 @@ export function compileGraph(
     for (const dependency of dependencies) visit(dependency);
     visiting.pop();
     graph.set(taskId(name), {
+      ...(definition.task.cache !== undefined && {
+        cache: definition.task.cache,
+      }),
       dependsOn: dependencies,
       id: taskId(name),
       package: definition.package,

@@ -19,6 +19,7 @@ const statusOrder: readonly TaskStatus[] = [
   "ready",
   "running",
   "succeeded",
+  "cached",
   "failed",
   "blocked",
   "cancelled",
@@ -157,7 +158,7 @@ export class ProgressModel {
       if (
         this.collapse &&
         row.task.run === undefined &&
-        ["pending", "succeeded"].includes(this.status(row))
+        ["cached", "pending", "succeeded"].includes(this.status(row))
       ) {
         collapsedDepth = row.depth;
       }
@@ -202,6 +203,7 @@ export class ProgressModel {
   summary(): string {
     const counts: Record<TaskStatus, number> = {
       blocked: 0,
+      cached: 0,
       cancelled: 0,
       failed: 0,
       pending: 0,
@@ -255,7 +257,12 @@ export class ProgressModel {
           : liveMarkers[status];
     if (appearance?.color)
       marker = styleText(colors[status], marker, { validateStream: false });
-    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope, this.packagePaths)} (${status}${duration === undefined ? "" : `, ${(duration / 1000).toFixed(1)}s`})`;
+    const timestamp = event?.completedAt;
+    const cacheNote =
+      status === "succeeded" && event?.cacheReason !== undefined
+        ? `, not cached: ${event.cacheReason}`
+        : "";
+    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope, this.packagePaths)} (${status}${duration === undefined ? "" : `, ${(duration / 1000).toFixed(1)}s`}${timestamp === undefined ? "" : `, last success: ${timestamp}`}${cacheNote})`;
   }
 
   private status(row: ProgressRow): TaskStatus {

@@ -10,6 +10,7 @@ import { executeGraph } from "../application";
 import { compileGraph, taskReference } from "../domain";
 import {
   createProcessExecutor,
+  createTaskCache,
   findConfiguration,
   findPackage,
   parseConfiguration,
@@ -71,6 +72,7 @@ export async function runTasks(
       graph,
       createProcessExecutor(root, directory, ci, packagePaths),
       {
+        cache: createTaskCache(root, options.noCache),
         concurrency,
         onEvent,
         ...(options.signal !== undefined && { signal: options.signal }),

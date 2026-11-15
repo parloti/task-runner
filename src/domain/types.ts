@@ -1,5 +1,12 @@
 import type { Brand } from "ts-brand";
 
+export interface CacheDefinition {
+  readonly env?: readonly string[];
+  readonly exclude?: readonly string[];
+  readonly inputs: readonly string[];
+  readonly outputs?: readonly string[];
+}
+
 export type Command =
   | {
       readonly args?: readonly string[];
@@ -10,6 +17,7 @@ export type Command =
   | { readonly command: string; readonly kind: "shell" };
 
 export interface CompiledTask {
+  readonly cache?: CacheDefinition;
   readonly dependsOn: readonly TaskId[];
   readonly id: TaskId;
   readonly package: string;
@@ -45,11 +53,14 @@ export interface RunResult {
 }
 
 export interface TaskDefinition {
+  readonly cache?: CacheDefinition;
   readonly dependsOn?: readonly string[];
   readonly run?: Command;
 }
 
 export interface TaskEvent {
+  readonly cacheReason?: string;
+  readonly completedAt?: string;
   readonly durationMs?: number;
   readonly error?: Error;
   readonly package: string;
@@ -61,6 +72,7 @@ export type TaskId = Brand<string, "task-runner/TaskId">;
 
 export type TaskStatus =
   | "blocked"
+  | "cached"
   | "cancelled"
   | "failed"
   | "pending"

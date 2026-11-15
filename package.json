@@ -91,6 +91,7 @@
     "typescript"
   ],
   "dependencies": {
+    "globby": "^16.2.4",
     "log-update": "^8.0.0",
     "ts-brand": "^0.2.0",
     "wrap-ansi": "^10.0.2"

@@ -8,8 +8,14 @@ import type {
 } from "../domain";
 
 import { normalizeExecutionError, TaskCancelledError } from "../domain";
+import {
+  type ExecutionCache,
+  prepareCachedTasks,
+  storeSuccessfulTasks,
+} from "./task-cache";
 
 export interface ExecutionOptions {
+  readonly cache?: ExecutionCache;
   readonly concurrency: number;
   readonly onEvent?: (event: TaskEvent) => void;
   readonly signal?: AbortSignal;
@@ -38,6 +44,7 @@ export async function executeGraph(
   if (options.signal?.aborted) cancel();
   options.signal?.addEventListener("abort", cancel, { once: true });
   const states = new Map<TaskId, TaskStatus>();
+  const completedAt = new Map<TaskId, string>();
   const active = new Map<TaskId, Promise<void>>();
   const errors: unknown[] = [];
   const transition = (
@@ -47,15 +54,21 @@ export async function executeGraph(
     error?: Error,
   ): void => {
     states.set(task.id, status);
+    if (status === "succeeded")
+      completedAt.set(task.id, new Date().toISOString());
+    const cachedAt = cached.get(task.id);
     options.onEvent?.({
       package: task.package,
       status,
       taskId: task.id,
+      ...(status === "cached" &&
+        cachedAt !== undefined && { completedAt: cachedAt, durationMs: 0 }),
       ...(durationMs !== undefined && { durationMs }),
       ...(error !== undefined && { error }),
     });
   };
   for (const task of graph.values()) states.set(task.id, "pending");
+  let cached: ReadonlyMap<TaskId, string> = new Map();
   const start = (task: CompiledTask): void => {
     transition(task, "ready");
     transition(task, "running");
@@ -83,6 +96,8 @@ export async function executeGraph(
     active.set(task.id, execution);
   };
   try {
+    if (options.cache !== undefined && !controller.signal.aborted)
+      cached = await prepareCachedTasks(graph, options.cache, options.onEvent);
     while (
       states.values().some((state) => state === "pending") ||
       active.size > 0
@@ -102,8 +117,14 @@ export async function executeGraph(
           transition(task, "blocked");
         } else if (controller.signal.aborted) {
           transition(task, "cancelled");
-        } else if (dependencies.every((state) => state === "succeeded")) {
-          if (task.run === undefined) {
+        } else if (
+          dependencies.every(
+            (state) => state === "succeeded" || state === "cached",
+          )
+        ) {
+          if (cached.has(task.id)) {
+            transition(task, "cached");
+          } else if (task.run === undefined) {
             transition(task, "succeeded");
           } else if (active.size < options.concurrency) {
             start(task);
@@ -124,11 +145,26 @@ export async function executeGraph(
     options.signal?.removeEventListener("abort", cancel);
     await Promise.allSettled(active.values());
   }
+  if (options.cache !== undefined) {
+    try {
+      await storeSuccessfulTasks(
+        graph,
+        options.cache,
+        states,
+        completedAt,
+        options.onEvent,
+      );
+    } catch (error) {
+      errors.push(normalizeExecutionError(error));
+    }
+  }
   return {
     errors,
     states,
-    success: states
-      .values()
-      .every((state) => !["blocked", "cancelled", "failed"].includes(state)),
+    success:
+      errors.length === 0 &&
+      states
+        .values()
+        .every((state) => !["blocked", "cancelled", "failed"].includes(state)),
   };
 }
