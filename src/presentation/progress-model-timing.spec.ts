@@ -49,7 +49,7 @@ describe("nested progress model", () => {
       model.update(event("root", status));
       vi.advanceTimersByTime(5000);
       // Assert
-      expect(model.frame(0, { limit: 20 })).toContain("root (1.2s)");
+      expect(model.frame(0, { limit: 20 })).toContain("root (⧗ 1.2s, ∑ 1.2s)");
     },
   );
 
@@ -67,7 +67,7 @@ describe("nested progress model", () => {
       model.update(event("empty", status));
       vi.advanceTimersByTime(2000);
       // Assert
-      expect(model.frame(0, { limit: 20 })).toContain("empty (0.0s)");
+      expect(model.frame(0, { limit: 20 })).toContain("empty (⧗ 0.0s, ∑ 0.0s)");
     },
   );
 
@@ -166,50 +166,24 @@ describe("nested progress model", () => {
     expect(model.summary()).toBe("Tasks: 0");
   });
 
-  it("starts group activity and timing only when its displayed subtree starts", () => {
+  it("colors the presentation-only waiting status", () => {
     // Arrange
-    vi.useFakeTimers();
     const model = new ProgressModel(
       graphFor(
-        task("validate", ["build", "pack", "test"], false),
-        task("build", ["compile"], false),
-        task("compile", ["clean"]),
-        task("clean"),
-        task("pack", ["build", "artifact"], false),
-        task("artifact", ["build"]),
-        task("test"),
+        task("group", ["first", "next"], false),
+        task("first"),
+        task("next"),
       ),
-      "validate",
+      "group",
+      false,
     );
-    vi.advanceTimersByTime(1000);
+    model.update(event("first", "running"));
+    model.update(event("first", "succeeded", 100));
+
     // Act
-    model.update(event("clean", "running"));
-    model.update(event("test", "running"));
-    vi.advanceTimersByTime(1200);
-    model.update(event("clean", "succeeded", 1200));
-    model.update(event("compile", "running"));
-    const live = model.frame(0, { limit: 30 });
-    vi.advanceTimersByTime(800);
-    model.update(event("compile", "succeeded", 800));
-    model.update(event("build", "succeeded"));
-    vi.advanceTimersByTime(500);
-    model.update(event("artifact", "running"));
-    vi.advanceTimersByTime(1000);
-    model.update(event("artifact", "succeeded", 1000));
-    model.update(event("pack", "succeeded"));
-    const completedGroups = model.frame(0, { limit: 30 });
-    vi.advanceTimersByTime(1000);
-    model.update(event("test", "succeeded", 4500));
-    model.update(event("validate", "succeeded"));
-    vi.advanceTimersByTime(10_000);
+    const colored = model.frame(0, { appearance: { color: true }, limit: 20 });
+
     // Assert
-    expect(live).toContain("validate (1.2s)");
-    expect(live).toContain("build (1.2s)");
-    expect(live).toContain("pack");
-    expect(completedGroups).toContain("build (2.0s)");
-    expect(completedGroups).toContain("pack (1.0s)");
-    expect(completedGroups).toContain("validate (3.5s)");
-    expect(model.frame(0, { limit: 30 })).toBe("+ validate (4.5s)");
-    expect(model.eventLine(event("pack", "succeeded"))).toBe("  + pack (1.0s)");
+    expect(colored).toContain("\u{1B}[33m…\u{1B}[39m group");
   });
 });

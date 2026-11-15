@@ -246,11 +246,14 @@ describe("nested progress model", () => {
         collapse,
       );
       // Act
+      vi.useFakeTimers();
+      model.update(event("child", "running"));
+      vi.advanceTimersByTime(100);
       model.update(event("child", "succeeded", 100));
       model.update(event("root", "succeeded", 100));
       // Assert
       expect(model.frame(0, { limit: 20 })).toBe(
-        "+ root (0.1s)" + (collapse ? "" : "\n  + child (0.1s)"),
+        "+ root (⧗ 0.1s, ∑ 0.1s)" + (collapse ? "" : "\n  + child (0.1s)"),
       );
     },
   );
@@ -269,12 +272,12 @@ describe("nested progress model", () => {
     vi.advanceTimersByTime(200);
     const webBuild = model.frame(0, { limit: 1000 });
     // Assert
-    expect(sharedBuild).toContain("| validate (1.3s)");
-    expect(sharedBuild).toContain("| validate:lib (1.3s)");
+    expect(sharedBuild).toContain("| validate (⧗ 1.3s, ∑ 1.3s)");
+    expect(sharedBuild).toContain("| validate:lib (⧗ 1.3s, ∑ 1.3s)");
     expect(sharedBuild).toContain(". validate:web");
     expect(sharedBuild).toContain(". validate:back");
     expect(sharedBuild).not.toMatch(/(?:pack|test:all) \(/);
-    expect(webBuild).toContain("| validate:web (0.2s)");
+    expect(webBuild).toContain("| validate:web (⧗ 0.2s, ∑ 0.2s)");
     expect(webBuild).toContain(". validate:back");
     expect(webBuild).not.toMatch(/(?:pack|test:all) \(/);
     expect(model.summary()).toContain("running: 1");

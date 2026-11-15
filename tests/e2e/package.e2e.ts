@@ -189,9 +189,9 @@ describe("packed distribution", () => {
         ),
       ).toBe(true);
       expect(cli.stderr).toContain("leaf (");
-      expect(cli.stderr).toMatch(/build \(\d+\.\ds\)/);
+      expect(cli.stderr).toMatch(/build \(⧗ \d+\.\ds, ∑ \d+\.\ds\)/);
       expect(cli.stderr).toContain("docs");
-      expect(cli.stderr).toMatch(/check \(\d+\.\ds\)/);
+      expect(cli.stderr).toMatch(/check \(⧗ \d+\.\ds, ∑ \d+\.\ds\)/);
       expect(cli.stderr).not.toContain('[".","');
       expect(cli.stderr).not.toContain("\u{1B}[");
       expect(cli.stderr).toMatch(

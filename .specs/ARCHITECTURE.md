@@ -61,9 +61,11 @@
   failed tasks outside the requested target appear as top-level rows in that
   same plan.
 - Presentation tracks group wall-clock durations from the first activity in
-  their owned display subtree and freezes them at terminal events. Shared work
-  displayed elsewhere does not activate a waiting group.
-  Scheduler events and command execution timing remain unchanged.
+  their owned display subtree, sums command durations for group real time, and
+  freezes both values at terminal events. A started group presents `running`
+  while a displayed command descendant runs and `waiting` otherwise. Shared
+  work displayed elsewhere does not activate a waiting group. Scheduler events
+  and command execution timing remain unchanged.
 - `log-update` redraws interactive stderr with terminal wrapping/resize support.
   Presentation owns the animation timer, not task promises or cancellation.
   Live redraw is viewport-limited; final persistence uses the configured task

@@ -63,13 +63,17 @@ describe("terminal progress", () => {
       const progress = new TerminalProgress(output, true, false);
       // Act
       progress.start(tasks, root);
-      for (const task of [clean, compile, build])
+      for (const task of [clean, compile]) {
+        progress.update({ package: ".", status: "running", taskId: task });
+        vi.advanceTimersByTime(100);
         progress.update({
           durationMs: 100,
           package: ".",
           status: "succeeded",
           taskId: task,
         });
+      }
+      progress.update({ package: ".", status: "succeeded", taskId: build });
       progress.update({ package: ".", status, taskId: test });
       progress.update({ package: ".", status: "blocked", taskId: root });
       const offset = text.length;
@@ -77,7 +81,7 @@ describe("terminal progress", () => {
       const final = stripVTControlCharacters(text.slice(offset));
       // Assert
       expect(final).toContain("\u{26A0} validate");
-      expect(final).toContain("  \u{2714} build (0.1s)");
+      expect(final).toContain("  \u{2714} build (⧗ 0.2s, ∑ 0.2s)");
       expect(final).toContain("    \u{2714} clean (0.1s)");
       expect(final).toContain("    \u{2714} compile (0.1s)");
       expect(final).toContain("test");

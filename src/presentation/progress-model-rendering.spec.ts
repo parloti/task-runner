@@ -5,7 +5,6 @@ import type { CompiledTask, TaskEvent, TaskId, TaskStatus } from "../domain";
 
 import { sharedBuildTasks } from "./__tests__";
 import { ProgressModel } from "./progress-model";
-import { taskLabel } from "./progress-model-rendering";
 
 const id = make<TaskId>();
 const task = (
@@ -42,23 +41,33 @@ const event = (
 afterEach(() => vi.useRealTimers());
 
 describe("nested progress model", () => {
-  it("omits the package qualifier when the current scope matches", () => {
-    // Arrange
-    const command = task("mutation", [], true, "apps/automation");
-    const label = taskLabel(command, "apps/automation", [
-      ".",
+  it("formats command labels in and across workspace scopes", () => {
+    const command = task(
+      "apps/automation#mutation",
+      [],
+      true,
       "apps/automation",
-    ]);
-    // Assert
-    expect(label).toBe("mutation");
-  });
+    );
+    const scopedGroup = task(
+      "validate:automation",
+      ["apps/automation#mutation"],
+      false,
+    );
+    const scoped = new ProgressModel(
+      graphFor(scopedGroup, command),
+      scopedGroup.id,
+      false,
+    ).frame(0);
+    const root = task("root", ["apps/automation#mutation"], false);
+    const qualified = new ProgressModel(
+      graphFor(root, command),
+      root.id,
+      false,
+    ).frame(0);
 
-  it("qualifies cross-workspace commands with their package suffix", () => {
-    // Arrange
-    const command = task("mutation", [], true, "apps/automation");
-    const label = taskLabel(command, ".", [".", "apps/automation"]);
     // Assert
-    expect(label).toBe("automation:mutation");
+    expect(scoped).toContain("  . mutation");
+    expect(qualified).toContain("automation:mutation");
   });
 
   it.each<TaskStatus>([
@@ -74,7 +83,7 @@ describe("nested progress model", () => {
     (status) => {
       // Arrange
       const name = "build";
-      const model = new ProgressModel(graphFor(task(name, [], false)), name);
+      const model = new ProgressModel(graphFor(task(name)), name);
       model.update(event(name, status, 1234));
       // Assert
       expect(model.frame(0, { limit: 20 })).toContain("build (1.2s)");
@@ -99,7 +108,7 @@ describe("nested progress model", () => {
     vi.advanceTimersByTime(1200);
     // Assert
     expect(model.frame(1, { limit: 20 })).toBe(
-      "/ root (1.2s)\n  / child (1.2s)",
+      "/ root (⧗ 1.2s, ∑ 1.2s)\n  / child (1.2s)",
     );
     expect(model.frame(2, { limit: 20 })).toContain("- child");
     expect(model.frame(3, { limit: 20 })).toContain("\\ child");
@@ -122,8 +131,8 @@ describe("nested progress model", () => {
     const active = model.frame(0, { limit: 20 });
     model.update(event("root", "succeeded"));
     // Assert
-    expect(active).toContain("| root (1.2s)");
-    expect(model.frame(0, { limit: 20 })).toBe("+ root (1.2s)");
+    expect(active).toContain("… root (⧗ 1.2s, ∑ 1.2s)");
+    expect(model.frame(0, { limit: 20 })).toBe("+ root (⧗ 1.2s, ∑ 1.2s)");
   });
 
   it("uses literal shell task IDs and sanitizes terminal controls in all labels", () => {

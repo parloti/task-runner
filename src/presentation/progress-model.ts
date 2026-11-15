@@ -1,15 +1,14 @@
-import { styleText } from "node:util";
-
 import type { CompiledTask, TaskEvent, TaskId, TaskStatus } from "../domain";
 
 import {
-  colors,
+  groupRealDuration,
+  type ProgressRowState,
+  progressStatus,
+} from "./progress-model-group-timing";
+import {
   type LiveAppearance,
-  liveMarkers,
-  markers,
   type ProgressRow,
-  spinner,
-  taskLabel,
+  renderProgressRow,
 } from "./progress-model-rendering";
 import { validationScope } from "./progress-model-scopes";
 import { updateGroupTiming } from "./progress-model-timing";
@@ -28,11 +27,16 @@ const statusOrder: readonly TaskStatus[] = [
 type FrameOptions = Readonly<{ appearance?: LiveAppearance; limit?: number }>;
 
 export class ProgressModel {
+  private readonly commandDurations = new Map<TaskId, number>();
+  private readonly commandTasks = new Set<TaskId>();
   private readonly events = new Map<TaskId, TaskEvent>();
+  private readonly groupChildren = new Map<TaskId, Set<TaskId>>();
   private readonly groupDescendants = new Map<TaskId, Set<TaskId>>();
   private readonly groupDurations = new Map<TaskId, number>();
+  private readonly groupRealDurations = new Map<TaskId, number>();
   private readonly packagePaths: readonly string[];
   private readonly rows: ProgressRow[] = [];
+  private readonly rowState: ProgressRowState;
   private readonly started = new Map<TaskId, number>();
 
   constructor(
@@ -123,6 +127,7 @@ export class ProgressModel {
           visit(dependency, depth, siblings, scope, owner);
         siblings.push(row);
         this.rows.push(row);
+        this.commandTasks.add(task.id);
       }
     };
     visit(root, 0, [], ".");
@@ -138,7 +143,22 @@ export class ProgressModel {
       };
       collect(row);
       this.groupDescendants.set(row.task.id, descendants);
+      this.groupChildren.set(
+        row.task.id,
+        new Set(row.children.map((child) => child.task.id)),
+      );
     }
+    this.rowState = {
+      commandDurations: this.commandDurations,
+      commandTasks: this.commandTasks,
+      events: this.events,
+      groupChildren: this.groupChildren,
+      groupDescendants: this.groupDescendants,
+      groupDurations: this.groupDurations,
+      groupRealDurations: this.groupRealDurations,
+      packagePaths: this.packagePaths,
+      started: this.started,
+    };
   }
 
   eventLine(event: TaskEvent): string | undefined {
@@ -161,7 +181,9 @@ export class ProgressModel {
       if (
         this.collapse &&
         row.task.run === undefined &&
-        ["cached", "pending", "succeeded"].includes(this.status(row))
+        ["cached", "pending", "succeeded"].includes(
+          progressStatus(row, this.rowState),
+        )
       ) {
         collapsedDepth = row.depth;
       }
@@ -171,9 +193,14 @@ export class ProgressModel {
     const selected = new Set<ProgressRow>();
     const priorities = visible.toSorted((left, right) => {
       const priority = (row: ProgressRow): number =>
-        ["blocked", "cancelled", "failed", "ready", "running"].includes(
-          this.status(row),
-        )
+        [
+          "blocked",
+          "cancelled",
+          "failed",
+          "ready",
+          "running",
+          "waiting",
+        ].includes(progressStatus(row, this.rowState))
           ? 0
           : 1;
       return priority(left) - priority(right);
@@ -230,11 +257,32 @@ export class ProgressModel {
       throw new Error(`Unknown progress task: ${event.taskId}`);
     }
     this.events.set(event.taskId, event);
+    const now = Date.now();
+    if (
+      this.commandTasks.has(event.taskId) &&
+      !["pending", "ready", "running"].includes(event.status)
+    ) {
+      const started = this.started.get(event.taskId);
+      this.commandDurations.set(
+        event.taskId,
+        event.durationMs ?? (started === undefined ? 0 : now - started),
+      );
+    }
+    if (
+      this.groupChildren.has(event.taskId) &&
+      !["pending", "ready", "running"].includes(event.status)
+    ) {
+      this.groupRealDurations.set(
+        event.taskId,
+        groupRealDuration(event.taskId, now, this.rowState),
+      );
+    }
     updateGroupTiming(
       event,
       this.groupDescendants,
       this.started,
       this.groupDurations,
+      now,
     );
   }
 
@@ -243,40 +291,6 @@ export class ProgressModel {
     frame: number,
     appearance?: LiveAppearance,
   ): string {
-    const status = this.status(row);
-    const event = this.events.get(row.task.id);
-    const start = this.started.get(row.task.id);
-    const duration =
-      event?.durationMs ??
-      this.groupDurations.get(row.task.id) ??
-      (start === undefined ? undefined : Date.now() - start);
-    let marker =
-      appearance === undefined
-        ? status === "running"
-          ? "|/-\\".charAt(frame % 4)
-          : markers[status]
-        : status === "running"
-          ? spinner.charAt(frame % spinner.length)
-          : liveMarkers[status];
-    if (appearance?.color)
-      marker = styleText(colors[status], marker, { validateStream: false });
-    const timestamp = event?.completedAt;
-    const cacheNote =
-      status === "succeeded" && event?.cacheReason !== undefined
-        ? `not cached: ${event.cacheReason}`
-        : "";
-    const details = [
-      duration === undefined ? undefined : `${(duration / 1000).toFixed(1)}s`,
-      timestamp === undefined ? undefined : `last success: ${timestamp}`,
-      cacheNote || undefined,
-    ].filter((detail): detail is string => detail !== undefined);
-    return `${"  ".repeat(row.depth)}${marker} ${taskLabel(row.task, row.scope, this.packagePaths)}${details.length === 0 ? "" : ` (${details.join(", ")})`}`;
-  }
-
-  private status(row: ProgressRow): TaskStatus {
-    const status = this.events.get(row.task.id)?.status ?? "pending";
-    return status === "pending" && this.started.has(row.task.id)
-      ? "running"
-      : status;
+    return renderProgressRow(row, frame, appearance, this.rowState);
   }
 }

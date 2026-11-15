@@ -125,8 +125,11 @@
 - UUID-correlated `events-<run-id>.jsonl` files in the same folder isolate
   invocation event streams, including invocations sharing a PID.
 - Interactive terminals show a nested, animated task list with readable package
-  and task labels. Pending, ready, running, succeeded, failed, blocked, and
-  cancelled states remain distinguishable.
+  and task labels. Pending, ready, running, waiting, succeeded, failed, blocked,
+  and cancelled states remain distinguishable. A started group shows `running`
+  while a command in its displayed subtree is running, and `waiting` when no
+  such command is running. This derived group state does not change scheduler
+  events or command-only status counts.
 - Display nesting comes from the validated graph, not npm-command parsing.
   Groups contain their prerequisites; command prerequisites appear in execution
   order within the containing group. Shared workspace tasks appear once under
@@ -183,8 +186,9 @@
   task row; footer lines are clipped to width. All chrome is transient.
 - Groups stay pending until work in their displayed subtree starts. Shared
   prerequisites displayed under another group do not start waiting groups or
-  later phases. Group durations measure wall-clock time from that first start
-  to the group's terminal event, without summing overlapping commands. They
+  later phases. Group total duration (`⧗`) measures wall-clock time from that
+  first start to the group's terminal event. Group real duration (`∑`) sums the
+  durations of its command tasks, using nested groups' real durations. Both
   update live and freeze on completion, blocking, or cancellation; groups with
   no started work report zero. Collapse and viewport limits do not affect this.
 - Live status icons use color and a dot spinner; labels and state words remain

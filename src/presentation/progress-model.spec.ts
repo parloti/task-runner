@@ -290,11 +290,11 @@ describe("nested progress model", () => {
     const frame = model.frame(0, { limit: 30 });
     // Assert
     expect(frame).toContain("validate:automation");
-    expect(frame).toContain("  ! test:all (107.2s)");
+    expect(frame).toContain("  ! test:all (⧗ 0.0s, ∑ 0.0s)");
     expect(frame).toContain("    . test");
     expect(frame).toContain("    . lib:shared");
     expect(model.eventLine(event(tests, "blocked"))).toBe(
-      "  ! test:all (107.2s)",
+      "  ! test:all (⧗ 0.0s, ∑ 0.0s)",
     );
   });
 });
