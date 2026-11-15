@@ -52,11 +52,10 @@ describe("API documentation", () => {
           "runTasks",
         ]),
       );
-      expect(exportsOf("presets")).toEqual(
+      expect(exportsOf("domain/presets")).toEqual(
         expect.arrayContaining([
           "createWorkspacePreset",
-          "PackageDescriptor",
-          "WorkspacePreset",
+          "WorkspacePresetInput",
         ]),
       );
     } finally {

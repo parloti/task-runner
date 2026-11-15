@@ -12,7 +12,6 @@ import {
   createProcessExecutor,
   findConfiguration,
   findPackage,
-  loadScripts,
   parseConfiguration,
 } from "../infrastructure";
 import { prepareRunLogDirectory } from "./run-logs";
@@ -39,8 +38,7 @@ export async function runTasks(
   if (tasks === undefined || !Object.hasOwn(tasks, entrypoint))
     throw new Error(`Unknown task "${entrypoint}" in package ${packagePath}`);
   const target = taskReference(packagePath, entrypoint);
-  const scripts = loadScripts(config, root);
-  const graph = compileGraph(config, target, scripts);
+  const graph = compileGraph(config, target);
   const packagePaths = Object.keys(config.packages);
   const ci =
     Boolean(process.env["CI"]) || (options.ci ?? config.defaults?.ci ?? false);

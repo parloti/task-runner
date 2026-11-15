@@ -20,14 +20,13 @@ function graph() {
       ".": {
         a: { dependsOn: ["shared"], run: { command: "a", kind: "shell" } },
         b: { dependsOn: ["shared"], run: { command: "b", kind: "shell" } },
-        docs: { run: { kind: "npm", optional: true, script: "docs" } },
-        end: { dependsOn: ["shared", "a", "b", "docs"] },
+        end: { dependsOn: ["shared", "a", "b"] },
         shared: { run: { command: "shared", kind: "shell" } },
       },
     },
     version: 2,
   };
-  return compileGraph(config, "end", new Map([[".", {}]]));
+  return compileGraph(config, "end");
 }
 
 describe("execution", () => {
@@ -59,7 +58,6 @@ describe("execution", () => {
       expect(result.success).toBe(true);
       expect(calls).toEqual(["shared", "a", "b"]);
       expect(peak).toBe(Math.min(2, concurrency));
-      expect(result.states.values().toArray()).toContain("skipped");
       expect(events.filter((event) => event.status === "running")).toHaveLength(
         3,
       );

@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CompiledTask, TaskEvent, TaskId, TaskStatus } from "../domain";
 
-import { compileGraph } from "../domain";
-import { createWorkspacePreset } from "../presets";
+import { workspacePhaseTasks } from "./__tests__";
 import { ProgressModel } from "./progress-model";
 
 const id = make<TaskId>();
@@ -17,8 +16,14 @@ const task = (
   dependsOn: dependencies.map((dependency) => id(dependency)),
   id: id(name),
   package: packagePath,
-  skip: false,
-  ...(command && { run: { kind: "npm", script: name } as const }),
+  ...(command && {
+    run: {
+      kind: "npm",
+      script: name.startsWith(`${packagePath}#`)
+        ? name.slice(packagePath.length + 1)
+        : name,
+    } as const,
+  }),
 });
 const graphFor = (...tasks: CompiledTask[]) =>
   new Map(tasks.map((item) => [item.id, item]));
@@ -36,6 +41,46 @@ const event = (
 afterEach(() => vi.useRealTimers());
 
 describe("nested progress model", () => {
+  it("counts only unique command tasks independently of collapse and frame limits", () => {
+    // Arrange
+    const states: TaskStatus[] = [
+      "pending",
+      "ready",
+      "running",
+      "succeeded",
+      "failed",
+      "blocked",
+      "cancelled",
+    ];
+    const model = new ProgressModel(
+      graphFor(
+        task("root", ["group", ...states], false),
+        task("group", ["child"], false),
+        task("child"),
+        ...states.map((name) => task(name)),
+      ),
+      "root",
+    );
+    // Act
+    expect(model.summary()).toBe("Tasks: 8 | pending: 8");
+    for (const state of states) model.update(event(state, state));
+    model.update(event("child", "succeeded"));
+    model.update(event("group", "succeeded"));
+    const limited = model.frame(0, { limit: 2 });
+    // Assert
+    expect(limited).not.toContain("child");
+    expect(model.summary()).toBe(
+      "Tasks: 8 | pending: 1 | ready: 1 | running: 1 | succeeded: 2 | failed: 1 | blocked: 1 | cancelled: 1",
+    );
+    // Act
+    model.update(event("running", "succeeded"));
+    model.update(event("root", "blocked"));
+    // Assert
+    expect(model.summary()).toBe(
+      "Tasks: 8 | pending: 1 | ready: 1 | succeeded: 3 | failed: 1 | blocked: 1 | cancelled: 1",
+    );
+  });
+
   it("labels a workspace mutation task as automation:mutation", () => {
     // Arrange
     const target = "mutation";
@@ -44,7 +89,6 @@ describe("nested progress model", () => {
       id: id("apps/automation#mutation"),
       package: "apps/automation",
       run: { kind: "npm", script: "mutation" },
-      skip: false,
     };
     const model = new ProgressModel(
       graphFor(task(target, ["apps/automation#mutation"], false), command),
@@ -71,7 +115,7 @@ describe("nested progress model", () => {
       false,
     );
     // Act
-    const frame = model.frame(0, 20);
+    const frame = model.frame(0, { limit: 20 });
     // Assert
     expect(frame).toContain("automation:one");
     expect(frame).toContain("lib:two");
@@ -116,19 +160,70 @@ describe("nested progress model", () => {
   });
   it("shows monorepo validation grouped by workspace with readable nested checks", () => {
     // Arrange
-    const preset = createWorkspacePreset([
-      { name: "root", path: ".", styles: true },
-      { name: "lib", path: "packages/lib", utility: true },
-      { internalDependencies: ["lib"], name: "web", path: "apps/web" },
-    ]);
     const target = "validate";
-    const graph = compileGraph(
-      preset.config,
-      target,
-      new Map(Object.entries(preset.scripts)),
+    const graph = graphFor(
+      task(target, ["lint", "validate:lib", "validate:web", "docs"], false),
+      task("lint", ["prettier", "eslint"], false),
+      task("prettier"),
+      task("eslint"),
+      task("docs"),
+      task(
+        "validate:lib",
+        ["packages/lib#build", "packages/lib#test:all"],
+        false,
+      ),
+      task("validate:web", ["apps/web#build", "apps/web#test:all"], false),
+      task(
+        "packages/lib#build",
+        [
+          "packages/lib#clean",
+          "packages/lib#compile",
+          "packages/lib#resolve-paths",
+        ],
+        false,
+        "packages/lib",
+      ),
+      task(
+        "apps/web#build",
+        [
+          "packages/lib#build",
+          "apps/web#clean",
+          "apps/web#compile",
+          "apps/web#resolve-paths",
+        ],
+        false,
+        "apps/web",
+      ),
+      task(
+        "packages/lib#test:all",
+        ["packages/lib#test"],
+        false,
+        "packages/lib",
+      ),
+      task("apps/web#test:all", ["apps/web#test"], false, "apps/web"),
+      task("packages/lib#clean", [], true, "packages/lib"),
+      task(
+        "packages/lib#compile",
+        ["packages/lib#clean"],
+        true,
+        "packages/lib",
+      ),
+      task(
+        "packages/lib#resolve-paths",
+        ["packages/lib#compile"],
+        true,
+        "packages/lib",
+      ),
+      task("packages/lib#test", [], true, "packages/lib"),
+      task("apps/web#clean", ["packages/lib#build"], true, "apps/web"),
+      task("apps/web#compile", ["apps/web#clean"], true, "apps/web"),
+      task("apps/web#resolve-paths", ["apps/web#compile"], true, "apps/web"),
+      task("apps/web#test", [], true, "apps/web"),
     );
     // Act
-    const frame = new ProgressModel(graph, target, false).frame(0, 200);
+    const frame = new ProgressModel(graph, target, false).frame(0, {
+      limit: 200,
+    });
     // Assert
     expect(frame.split("\n").filter((line) => /^ {2}\S/.test(line))).toEqual([
       "  . lint (pending)",
@@ -156,85 +251,26 @@ describe("nested progress model", () => {
       model.update(event("child", "succeeded", 100));
       model.update(event("root", "succeeded", 100));
       // Assert
-      expect(model.frame(0, 20)).toBe(
+      expect(model.frame(0, { limit: 20 })).toBe(
         "+ root (succeeded, 0.1s)" +
           (collapse ? "" : "\n  + child (succeeded, 0.1s)"),
       );
     },
   );
-  it("starts group activity and timing only when its displayed subtree starts", () => {
-    // Arrange
-    vi.useFakeTimers();
-    const model = new ProgressModel(
-      graphFor(
-        task("validate", ["build", "pack", "test"], false),
-        task("build", ["compile"], false),
-        task("compile", ["clean"]),
-        task("clean"),
-        task("pack", ["build", "artifact"], false),
-        task("artifact", ["build"]),
-        task("test"),
-      ),
-      "validate",
-    );
-    vi.advanceTimersByTime(1000);
-    // Act
-    model.update(event("clean", "running"));
-    model.update(event("test", "running"));
-    vi.advanceTimersByTime(1200);
-    model.update(event("clean", "succeeded", 1200));
-    model.update(event("compile", "running"));
-    const live = model.frame(0, 30);
-    vi.advanceTimersByTime(800);
-    model.update(event("compile", "succeeded", 800));
-    model.update(event("build", "succeeded"));
-    vi.advanceTimersByTime(500);
-    model.update(event("artifact", "running"));
-    vi.advanceTimersByTime(1000);
-    model.update(event("artifact", "succeeded", 1000));
-    model.update(event("pack", "succeeded"));
-    const completedGroups = model.frame(0, 30);
-    vi.advanceTimersByTime(1000);
-    model.update(event("test", "succeeded", 4500));
-    model.update(event("validate", "succeeded"));
-    vi.advanceTimersByTime(10_000);
-    // Assert
-    expect(live).toContain("validate (running, 1.2s)");
-    expect(live).toContain("build (running, 1.2s)");
-    expect(live).toContain("pack (pending)");
-    expect(completedGroups).toContain("build (succeeded, 2.0s)");
-    expect(completedGroups).toContain("pack (succeeded, 1.0s)");
-    expect(completedGroups).toContain("validate (running, 3.5s)");
-    expect(model.frame(0, 30)).toBe("+ validate (succeeded, 4.5s)");
-    expect(model.eventLine(event("pack", "succeeded"))).toBe(
-      "  + pack (succeeded, 1.0s)",
-    );
-  });
-
   it("keeps other workspaces and later phases pending while a shared build runs", () => {
     // Arrange
     vi.useFakeTimers();
-    const preset = createWorkspacePreset([
-      { name: "root", path: "." },
-      { internalDependencies: ["lib"], name: "web", path: "apps/web" },
-      { internalDependencies: ["lib"], name: "back", path: "apps/back" },
-      { name: "lib", path: "packages/lib", utility: true },
-    ]);
     const target = "validate";
-    const graph = compileGraph(
-      preset.config,
-      target,
-      new Map(Object.entries(preset.scripts)),
-    );
+    const graph = graphFor(...workspacePhaseTasks());
     const model = new ProgressModel(graph, target, false);
     // Act
     model.update(event("packages/lib#clean", "running"));
     vi.advanceTimersByTime(1300);
-    const sharedBuild = model.frame(0, 1000);
+    const sharedBuild = model.frame(0, { limit: 1000 });
     model.update(event("packages/lib#clean", "succeeded", 1300));
     model.update(event("apps/web#clean", "running"));
     vi.advanceTimersByTime(200);
-    const webBuild = model.frame(0, 1000);
+    const webBuild = model.frame(0, { limit: 1000 });
     // Assert
     expect(sharedBuild).toContain("| validate (running, 1.3s)");
     expect(sharedBuild).toContain("| validate:lib (running, 1.3s)");

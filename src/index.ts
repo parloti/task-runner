@@ -13,5 +13,5 @@ export type {
   TaskId,
   TaskStatus,
 } from "./domain";
-export { createWorkspacePreset } from "./presets";
-export type { PackageDescriptor, WorkspacePreset } from "./presets";
+export { createWorkspacePreset } from "./domain";
+export type { WorkspacePresetInput } from "./domain";

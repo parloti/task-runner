@@ -167,8 +167,8 @@ describe("packed distribution", () => {
         import {runTasks} from "@codeperfect/task-runner";
         import {createWorkspacePreset} from "@codeperfect/task-runner/presets";
         const result = await runTasks("check");
-        const preset = createWorkspacePreset([{path:".",name:"consumer",utility:true}]);
-        console.log(JSON.stringify({success:result.success,build:preset.scripts["."].build}));
+        const preset = createWorkspacePreset({packages:{".":{build:{run:{kind:"npm",script:"leaf"}}}}});
+        console.log(JSON.stringify({success:result.success,version:preset.version,build:preset.packages["."]["build"].run.script}));
       `,
       ]);
       // Assert
@@ -190,15 +190,16 @@ describe("packed distribution", () => {
       ).toBe(true);
       expect(cli.stderr).toContain("leaf (running");
       expect(cli.stderr).toMatch(/build \(succeeded, \d+\.\ds\)/);
-      expect(cli.stderr).toContain("docs (skipped)");
+      expect(cli.stderr).toContain("docs (succeeded");
       expect(cli.stderr).toMatch(/check \(succeeded, \d+\.\ds\)/);
       expect(cli.stderr).not.toContain('[".","');
       expect(cli.stderr).not.toContain("\u{1B}[");
       expect(cli.stderr).toMatch(
-        /Tasks: 2 \| succeeded: 1 \| skipped: 1 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\r?\n\r?\n$/,
+        /Tasks: 2 \| succeeded: 2 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\r?\n\r?\n$/,
       );
       expect(library.stdout).toContain('"success":true');
-      expect(library.stdout).toContain('"build":"task-runner run build"');
+      expect(library.stdout).toContain('"version":2');
+      expect(library.stdout).toContain('"build":"leaf"');
       expect(
         existsSync(
           path.join(

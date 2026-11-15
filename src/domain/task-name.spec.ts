@@ -10,7 +10,6 @@ const task: CompiledTask = {
   id: make<TaskId>()("apps/automation#mutation"),
   package: "apps/automation",
   run: { kind: "npm", script: "mutation" },
-  skip: false,
 };
 
 describe("qualifiedTaskName", () => {

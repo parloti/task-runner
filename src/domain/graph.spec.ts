@@ -13,12 +13,11 @@ const tasks: Record<string, TaskDefinition> = {
   unrelated: {},
 };
 const config: RunnerConfig = { packages: { ".": tasks }, version: 2 };
-const scripts = new Map([[".", { check: "echo checked" }]]);
 
 describe("graph compilation", () => {
   it("selects a diamond graph once without unrelated work", () => {
     // Arrange & Act
-    const graph = compileGraph(config, "end", scripts);
+    const graph = compileGraph(config, "end");
     // Assert
     expect(graph.keys().toArray()).toEqual(["start", "left", "right", "end"]);
   });
@@ -39,12 +38,8 @@ describe("graph compilation", () => {
       },
       version: 2,
     };
-    const workflowScripts = new Map([
-      [".", { mutation: "stryker", prepare: "prepare", test: "vitest" }],
-    ]);
-
     // Act
-    const graph = compileGraph(workflow, "mutation", workflowScripts);
+    const graph = compileGraph(workflow, "mutation");
 
     // Assert
     expect(graph.keys().toArray()).toEqual(["mutation"]);
@@ -85,14 +80,8 @@ describe("graph compilation", () => {
         },
         version: 2,
       };
-      const manifests = new Map([
-        [".", {}],
-        ["app", {}],
-        ["lib", {}],
-      ]);
-
       // Act
-      const graph = compileGraph(workflow, target, manifests);
+      const graph = compileGraph(workflow, target);
 
       // Assert
       expect(
@@ -127,12 +116,8 @@ describe("graph compilation", () => {
       },
       version: 2,
     };
-    const workflowScripts = new Map([
-      [".", { mutation: "stryker", test: "vitest" }],
-    ]);
-
     // Act
-    const graph = compileGraph(workflow, "test:all", workflowScripts);
+    const graph = compileGraph(workflow, "test:all");
 
     // Assert
     expect(graph.keys().toArray()).toEqual(["test", "mutation", "test:all"]);
@@ -147,10 +132,6 @@ describe("graph compilation", () => {
       bad: { dependsOn: ["bad"] },
       error: "Circular task dependency: bad -> bad",
     },
-    {
-      bad: { run: { kind: "npm" as const, script: "missing" } },
-      error: "Missing required npm script",
-    },
   ])(
     "rejects invalid definitions outside the selected target: $error",
     ({ bad, error }) => {
@@ -159,25 +140,33 @@ describe("graph compilation", () => {
         compileGraph(
           { packages: { ".": { ...tasks, bad } }, version: 2 },
           "end",
-          scripts,
         ),
       ).toThrow(error);
     },
   );
 
-  it("skips only explicitly optional missing scripts", () => {
+  it("keeps required and optional npm commands from the config", () => {
     // Arrange
-    const optional: RunnerConfig = {
+    const commands: RunnerConfig = {
       packages: {
-        ".": { docs: { run: { kind: "npm", optional: true, script: "docs" } } },
+        ".": {
+          docs: { run: { kind: "npm", optional: true, script: "docs" } },
+          test: { run: { kind: "npm", script: "test" } },
+        },
       },
       version: 2,
     };
     // Act & Assert
-    expect(
-      compileGraph(optional, "docs", scripts).values().next().value?.skip,
-    ).toBe(true);
-    expect(() => compileGraph(config, "absent", scripts)).toThrow(
+    expect(compileGraph(commands, "docs").values().next().value?.run).toEqual({
+      kind: "npm",
+      optional: true,
+      script: "docs",
+    });
+    expect(compileGraph(commands, "test").values().next().value?.run).toEqual({
+      kind: "npm",
+      script: "test",
+    });
+    expect(() => compileGraph(config, "absent")).toThrow(
       "Unknown task: absent",
     );
   });
@@ -199,13 +188,8 @@ describe("graph compilation", () => {
       },
       version: 2,
     };
-    const manifests = new Map([
-      [".", {}],
-      ["apps/web", {}],
-      ["packages/lib", {}],
-    ]);
     // Act
-    const graph = compileGraph(scoped, "build", manifests);
+    const graph = compileGraph(scoped, "build");
     // Assert
     expect(graph.keys().toArray()).toEqual([
       "prepare",
@@ -214,12 +198,15 @@ describe("graph compilation", () => {
       "apps/web#build",
       "build",
     ]);
-    expect(
-      compileGraph(scoped, "build:web", manifests).keys().toArray().at(-1),
-    ).toBe("build:web");
-    expect(() => compileGraph(scoped, "build", scripts)).toThrow(
-      "Unknown package: apps/web",
+    expect(compileGraph(scoped, "build:web").keys().toArray().at(-1)).toBe(
+      "build:web",
     );
+    expect(() =>
+      compileGraph(
+        { packages: { ".": scoped.packages["."] ?? {} }, version: 2 },
+        "build",
+      ),
+    ).toThrow("Unknown task: apps/web#build");
   });
 
   it("detects cross-package cycles", () => {
@@ -232,16 +219,9 @@ describe("graph compilation", () => {
       version: 2,
     };
     // Act & Assert
-    expect(() =>
-      compileGraph(
-        cyclic,
-        "build",
-        new Map([
-          [".", {}],
-          ["lib", {}],
-        ]),
-      ),
-    ).toThrow("build -> lib#build -> build");
+    expect(() => compileGraph(cyclic, "build")).toThrow(
+      "build -> lib#build -> build",
+    );
   });
 
   it.each(["", " ", "a#b"])(
@@ -264,14 +244,24 @@ describe("graph compilation", () => {
     expect(resolveTaskReference("apps/web", ".#build")).toBe("build");
   });
 
-  it("rejects recursive npm wrappers", () => {
-    // Arrange & Act & Assert
-    expect(() =>
-      compileGraph(
-        config,
-        "end",
-        new Map([[".", { check: "task-runner run check" }]]),
-      ),
-    ).toThrow("Recursive runner wrapper");
+  it("trusts configured npm script references without inspecting package manifests", () => {
+    // Arrange
+    const workflow: RunnerConfig = {
+      packages: {
+        ".": {
+          check: { run: { kind: "npm", script: "task-runner run check" } },
+        },
+      },
+      version: 2,
+    };
+
+    // Act
+    const graph = compileGraph(workflow, "check");
+
+    // Assert
+    expect(graph.values().next().value?.run).toEqual({
+      kind: "npm",
+      script: "task-runner run check",
+    });
   });
 });

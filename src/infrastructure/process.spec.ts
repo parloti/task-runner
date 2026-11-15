@@ -15,7 +15,6 @@ const task: CompiledTask = {
   id: make<TaskId>()("command"),
   package: ".",
   run: { command: `node -e "setTimeout(()=>{},30)"`, kind: "shell" },
-  skip: false,
 };
 vi.mock(import("node:child_process"), async (importOriginal) => {
   const actual = { ...(await importOriginal()) };
@@ -132,12 +131,7 @@ describe("process boundary", () => {
       await expect(executor(task, controller.signal)).rejects.toThrow(
         "Cancelled task",
       );
-      const empty: CompiledTask = {
-        dependsOn: [],
-        id: task.id,
-        package: ".",
-        skip: false,
-      };
+      const empty: CompiledTask = { dependsOn: [], id: task.id, package: "." };
       await expect(
         executor(empty, new AbortController().signal),
       ).rejects.toThrow("Missing command");

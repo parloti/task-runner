@@ -14,7 +14,6 @@ export interface CompiledTask {
   readonly id: TaskId;
   readonly package: string;
   readonly run?: Command;
-  readonly skip: boolean;
 }
 
 export type ExecuteCommand = (
@@ -67,5 +66,4 @@ export type TaskStatus =
   | "pending"
   | "ready"
   | "running"
-  | "skipped"
   | "succeeded";

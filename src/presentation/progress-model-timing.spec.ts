@@ -16,7 +16,6 @@ const task = (
   dependsOn: dependencies.map((dependency) => id(dependency)),
   id: id(name),
   package: packagePath,
-  skip: false,
   ...(command && { run: { kind: "npm", script: name } as const }),
 });
 const graphFor = (...tasks: CompiledTask[]) =>
@@ -50,11 +49,11 @@ describe("nested progress model", () => {
       model.update(event("root", status));
       vi.advanceTimersByTime(5000);
       // Assert
-      expect(model.frame(0, 20)).toContain(`root (${status}, 1.2s)`);
+      expect(model.frame(0, { limit: 20 })).toContain(`root (${status}, 1.2s)`);
     },
   );
 
-  it.each(["succeeded", "skipped", "blocked", "cancelled"] as const)(
+  it.each(["succeeded", "blocked", "cancelled"] as const)(
     "reports zero for a group that becomes %s without starting work",
     (status) => {
       // Arrange
@@ -68,7 +67,9 @@ describe("nested progress model", () => {
       model.update(event("empty", status));
       vi.advanceTimersByTime(2000);
       // Assert
-      expect(model.frame(0, 20)).toContain(`empty (${status}, 0.0s)`);
+      expect(model.frame(0, { limit: 20 })).toContain(
+        `empty (${status}, 0.0s)`,
+      );
     },
   );
 
@@ -78,7 +79,6 @@ describe("nested progress model", () => {
     ["running", "\u{280B}", 36],
     ["succeeded", "\u{2714}", 32],
     ["failed", "\u{2716}", 31],
-    ["skipped", "\u{2193}", 90],
     ["blocked", "\u{26A0}", 33],
     ["cancelled", "\u{25A0}", 35],
   ] as const)(
@@ -88,8 +88,14 @@ describe("nested progress model", () => {
       const model = new ProgressModel(graphFor(task("check")), "check");
       model.update(event("check", status, 100));
       // Act
-      const colored = model.frame(0, 20, { color: true });
-      const uncolored = model.frame(0, 20, { color: false });
+      const colored = model.frame(0, {
+        appearance: { color: true },
+        limit: 20,
+      });
+      const uncolored = model.frame(0, {
+        appearance: { color: false },
+        limit: 20,
+      });
       // Assert
       expect(colored).toContain(`\u{1B}[${String(color)}m${icon}\u{1B}[39m`);
       expect(stripVTControlCharacters(colored)).toBe(uncolored);
@@ -111,7 +117,7 @@ describe("nested progress model", () => {
     model.update(event("active", "running", 0));
     // Act
     const frames = Array.from({ length: 11 }, (_, frame) =>
-      model.frame(frame, 2, { color: true }),
+      model.frame(frame, { appearance: { color: true }, limit: 2 }),
     );
     // Assert
     expect(frames[0]).toContain("\u{1B}[36m\u{280B}\u{1B}[39m root");
@@ -136,7 +142,7 @@ describe("nested progress model", () => {
       false,
     );
     // Act
-    const frame = model.frame(0, 30);
+    const frame = model.frame(0, { limit: 30 });
     // Assert
     expect(frame).toBe(
       [
@@ -160,5 +166,54 @@ describe("nested progress model", () => {
     model.update(event("group", "succeeded"));
     // Assert
     expect(model.summary()).toBe("Tasks: 0");
+  });
+
+  it("starts group activity and timing only when its displayed subtree starts", () => {
+    // Arrange
+    vi.useFakeTimers();
+    const model = new ProgressModel(
+      graphFor(
+        task("validate", ["build", "pack", "test"], false),
+        task("build", ["compile"], false),
+        task("compile", ["clean"]),
+        task("clean"),
+        task("pack", ["build", "artifact"], false),
+        task("artifact", ["build"]),
+        task("test"),
+      ),
+      "validate",
+    );
+    vi.advanceTimersByTime(1000);
+    // Act
+    model.update(event("clean", "running"));
+    model.update(event("test", "running"));
+    vi.advanceTimersByTime(1200);
+    model.update(event("clean", "succeeded", 1200));
+    model.update(event("compile", "running"));
+    const live = model.frame(0, { limit: 30 });
+    vi.advanceTimersByTime(800);
+    model.update(event("compile", "succeeded", 800));
+    model.update(event("build", "succeeded"));
+    vi.advanceTimersByTime(500);
+    model.update(event("artifact", "running"));
+    vi.advanceTimersByTime(1000);
+    model.update(event("artifact", "succeeded", 1000));
+    model.update(event("pack", "succeeded"));
+    const completedGroups = model.frame(0, { limit: 30 });
+    vi.advanceTimersByTime(1000);
+    model.update(event("test", "succeeded", 4500));
+    model.update(event("validate", "succeeded"));
+    vi.advanceTimersByTime(10_000);
+    // Assert
+    expect(live).toContain("validate (running, 1.2s)");
+    expect(live).toContain("build (running, 1.2s)");
+    expect(live).toContain("pack (pending)");
+    expect(completedGroups).toContain("build (succeeded, 2.0s)");
+    expect(completedGroups).toContain("pack (succeeded, 1.0s)");
+    expect(completedGroups).toContain("validate (running, 3.5s)");
+    expect(model.frame(0, { limit: 30 })).toBe("+ validate (succeeded, 4.5s)");
+    expect(model.eventLine(event("pack", "succeeded"))).toBe(
+      "  + pack (succeeded, 1.0s)",
+    );
   });
 });

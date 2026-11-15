@@ -42,6 +42,7 @@ export function createProcessExecutor(
             findNpmCli(),
             "run",
             command.script,
+            ...(command.optional ? ["--if-present"] : []),
             ...(command.args?.length ? ["--", ...command.args] : []),
           ]
         : [];

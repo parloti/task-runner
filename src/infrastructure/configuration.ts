@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import type {
@@ -63,42 +63,6 @@ export function findPackage(
   if (selected === undefined)
     throw new Error(`Working directory has no configured package: ${cwd}`);
   return selected;
-}
-
-/**
- * Read package manifests and collect their declared npm scripts.
- * @param config Configuration whose package paths need manifests.
- * @param root Absolute directory containing the package manifests.
- * @returns Script maps keyed by configured package path.
- * @example `loadScripts(config, process.cwd())` reads scripts for every configured package.
- */
-export function loadScripts(
-  config: RunnerConfig,
-  root: string,
-): ReadonlyMap<string, Readonly<Record<string, string>>> {
-  const result = new Map<string, Record<string, string>>();
-  const names = new Set<string>();
-  for (const packagePath of Object.keys(config.packages)) {
-    const manifestPath = path.join(root, packagePath, "package.json");
-    const manifestText = readFileSync(manifestPath, "utf8");
-    const manifestValue: unknown = JSON.parse(manifestText) as unknown;
-    const manifest = object(manifestValue, `${packagePath}/package.json`);
-    if (manifest["name"] !== undefined) {
-      const name = text(manifest["name"], "package name");
-      if (names.has(name)) throw new Error(`Duplicate package name: ${name}`);
-      names.add(name);
-    }
-    const declaredScripts = object(manifest["scripts"] ?? {}, "scripts");
-    const checkedScripts: [string, string][] = Object.entries(
-      declaredScripts,
-    ).map(([name, value]) => {
-      if (typeof value !== "string")
-        throw new TypeError(`Expected string: script ${name}`);
-      return [name, value];
-    });
-    result.set(packagePath, Object.fromEntries(checkedScripts));
-  }
-  return result;
 }
 
 /**

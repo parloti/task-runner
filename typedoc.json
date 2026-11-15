@@ -1,5 +1,5 @@
 {
-  "entryPoints": ["./src/index.ts", "./src/presets/index.ts"],
+  "entryPoints": ["./src/index.ts", "./src/domain/presets.ts"],
   "highlightLanguages": [
     "bash",
     "console",

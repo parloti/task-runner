@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   findConfiguration,
   findPackage,
-  loadScripts,
   parseConfiguration,
 } from "./configuration";
 
@@ -220,32 +219,6 @@ describe("configuration boundary", () => {
       expect(() => findConfiguration(path.parse(directory).root)).toThrow(
         "No task-runner.json",
       );
-    } finally {
-      rmSync(directory, { force: true, recursive: true });
-    }
-  });
-
-  it("validates manifests and package identities without rejecting script-section headers", () => {
-    // Arrange
-    const directory = mkdtempSync(path.join(os.tmpdir(), "runner-manifest-"));
-    const manifest = path.join(directory, "package.json");
-    mkdirSync(path.join(directory, "pkg"));
-    const config = parseConfiguration({
-      packages: { ".": {}, pkg: {} },
-      version: 2,
-    });
-    try {
-      // Act & Assert
-      writeFileSync(manifest, '{"name":"root","scripts":{"header":""}}');
-      writeFileSync(path.join(directory, "pkg", "package.json"), "{}");
-      expect(loadScripts(config, directory).get(".")).toEqual({ header: "" });
-      writeFileSync(
-        path.join(directory, "pkg", "package.json"),
-        '{"name":"root"}',
-      );
-      expect(() => loadScripts(config, directory)).toThrow("Duplicate package");
-      writeFileSync(manifest, '{"scripts":{"bad":7}}');
-      expect(() => loadScripts(config, directory)).toThrow("Expected string");
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }

@@ -11,7 +11,6 @@ const task: CompiledTask = {
   id: make<TaskId>()("apps/automation#validation:test"),
   package: "apps/automation",
   run: { kind: "npm", script: "test" },
-  skip: false,
 };
 
 afterEach(() => vi.restoreAllMocks());

@@ -18,23 +18,24 @@ import { runTasks } from "../../src";
 /**
  * Create a temporary package fixture for runtime integration scenarios.
  * @param tasks Root package task definitions for the fixture.
- * @param scripts Optional npm scripts declared by the fixture package.
+ * @param scripts When provided, creates a package manifest with these scripts.
  * @returns The fixture path and parsed runner configuration.
  * @example `fixture({ build: { run: command } })` creates a runnable fixture.
  */
 function fixture(
   tasks: RunnerConfig["packages"][string],
-  scripts: Record<string, string> = {},
+  scripts?: Record<string, string>,
 ) {
   const directory = mkdtempSync(path.join(os.tmpdir(), "task runner "));
   const config: RunnerConfig = {
     packages: { ".": { ...tasks, check: { dependsOn: ["end"] } } },
     version: 2,
   };
-  writeFileSync(
-    path.join(directory, "package.json"),
-    JSON.stringify({ name: "fixture", scripts }),
-  );
+  if (scripts !== undefined)
+    writeFileSync(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name: "fixture", scripts }),
+    );
   writeFileSync(
     path.join(directory, "task-runner.json"),
     JSON.stringify(config),
@@ -124,32 +125,38 @@ describe("real runtime", () => {
     }
   });
 
-  it("preflights missing scripts without creating logs or running prerequisites", async () => {
+  it("attempts missing required scripts after prerequisites and reports execution failure", async () => {
     // Arrange
-    const directory = fixture({
-      before: {
-        run: {
-          command: "node -e \"require('fs').writeFileSync('bad','bad')\"",
-          kind: "shell",
+    const directory = fixture(
+      {
+        before: {
+          run: {
+            command: "node -e \"require('fs').writeFileSync('bad','bad')\"",
+            kind: "shell",
+          },
         },
+        end: { dependsOn: ["before", "missing"] },
+        missing: { run: { kind: "npm", script: "missing" } },
       },
-      end: { dependsOn: ["before"], run: { kind: "npm", script: "missing" } },
-    });
+      {},
+    );
     const onPlan = vi.fn();
     try {
-      // Act & Assert
-      await expect(
-        runTasks("check", { cwd: directory, onPlan }),
-      ).rejects.toThrow("Missing required");
-      expect(existsSync(path.join(directory, "bad"))).toBe(false);
-      expect(existsSync(path.join(directory, "logs"))).toBe(false);
-      expect(onPlan).not.toHaveBeenCalled();
+      // Act
+      const result = await runTasks("check", { cwd: directory, onPlan });
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.states.values().toArray()).toContain("failed");
+      expect(result.errors).toHaveLength(1);
+      expect(existsSync(path.join(directory, "bad"))).toBe(true);
+      expect(existsSync(path.join(directory, "logs"))).toBe(true);
+      expect(onPlan).toHaveBeenCalledOnce();
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }
   });
 
-  it("selects workspace-local tasks and skips optional docs", async () => {
+  it("selects workspace-local tasks and succeeds when optional docs are absent", async () => {
     // Arrange
     const directory = fixture({
       end: { run: { kind: "npm", optional: true, script: "docs" } },
@@ -177,7 +184,7 @@ describe("real runtime", () => {
         cwd: workspace,
       });
       // Assert
-      expect(result.states.values().toArray()).toEqual(["skipped"]);
+      expect(result.states.values().toArray()).toEqual(["succeeded"]);
       expect(result.success).toBe(true);
     } finally {
       rmSync(directory, { force: true, recursive: true });

@@ -2,15 +2,18 @@
 
 ## Scope
 
-- Standalone CLI and reusable library for explicit task DAGs and npm scripts.
-- Optional metadata-driven build, pack, lint, test, and validation presets.
-- No caching, watch daemon, remote execution, plugin framework, tool inference,
-  automatic retries, or Workspaces Manager dependency.
+- Standalone CLI and reusable library for executing task graphs explicitly
+  declared in version-2 JSON.
+- An optional typed config constructor that formats caller-supplied task
+  definitions as runner JSON.
+- No package discovery, tool inference, workflow selection, automatic retries,
+  caching, watch daemon, remote execution, or plugin framework.
 
 ## Execution contract
 
 - Input: version-2 JSON config, task name, package scope, CI/concurrency options,
-  and optional cancellation signal.
+  and optional cancellation signal. The config declares every package path,
+  task, dependency, and npm script reference the runner may execute.
 - The optional root `defaults` object can set `ci`, `concurrency`, `collapse`,
   `maxTasks`, and `scroll`. Explicit CLI values take precedence over configured
   defaults; omitted values use built-in defaults. A non-empty `CI` environment
@@ -33,10 +36,16 @@
   configured package, including when called from a nested directory.
 - Tasks explicitly declare task dependencies and an optional npm/shell command.
   A task with no command completes after its prerequisites.
-- Preflight validates the complete configuration, declared manifests/scripts,
-  references, cycles, and positive integer concurrency before command side effects.
-- Required scripts fail when absent/empty; explicitly optional scripts skip.
-- Selected prerequisites must succeed or explicitly skip before dependents start.
+- The runner does not discover packages, read `package.json`, or decide which
+  scripts, tasks, or task groups belong to a project. It executes only commands
+  declared in the config.
+- Preflight validates the complete configuration, references, cycles, and
+  positive integer concurrency before command side effects. It does not check
+  whether configured npm scripts exist.
+- Required npm scripts are attempted by npm and fail as task execution when
+  absent. Optional npm tasks pass `--if-present` and succeed when the script is
+  absent.
+- Selected prerequisites must succeed before dependents start.
 - Each task identity executes once per run. Independent tasks can overlap up to
   the global leaf-command limit; dependency waits do not consume slots.
 - Default concurrency is `max(1, availableParallelism() - 1)`.
@@ -71,8 +80,8 @@
 - UUID-correlated `events-<run-id>.jsonl` files in the same folder isolate
   invocation event streams, including invocations sharing a PID.
 - Interactive terminals show a nested, animated task list with readable package
-  and task labels. Pending, ready, running, succeeded, failed, skipped, blocked,
-  and cancelled states remain distinguishable.
+  and task labels. Pending, ready, running, succeeded, failed, blocked, and
+  cancelled states remain distinguishable.
 - Display nesting comes from the validated graph, not npm-command parsing.
   Groups contain their prerequisites; command prerequisites appear in execution
   order within the containing group. Shared workspace tasks appear once under
@@ -145,27 +154,17 @@
 - External telemetry can subscribe through the event contract; a backend is not
   required to execute local commands.
 
-## Presets
+## Config constructor
 
-- Inputs are explicit package descriptors and internal package dependencies.
-  Callers own filesystem discovery and dependency-field selection.
-- Build orders clean, compile, and path resolution; internal dependencies build
-  before consumers. Package pack is an ordinary npm command depending on build,
-  without a separate pack:artifact task. Root monorepo pack aggregates packages.
-- Documentation depends on the package build when both are selected. Root
-  monorepo validation explicitly includes the aggregate build so documentation
-  waits for all workspace builds. Invoking docs or pack alone does not build.
-- Root lint runs once. Root validation omits duplicate workspace lint and gates
-  workspace typechecks/tests on selected builds. Direct typecheck skips builds.
-- Monorepo validation groups workspace checks under `validate:<workspace>`
-  alongside root lint. Root docs follow those groups in the display; shared
-  prerequisite execution and global concurrency are unchanged.
-- Local validation retains local lint and package-local behavior.
-- Angular, extension, utility, browser/Playwright, and style descriptors control
-  applicable commands; absent inapplicable tasks are not required.
-- Root aliases use unique workspace suffixes; duplicate names/paths/suffixes fail.
-- Generated preset configs include a valid JSON `$comment` warning that manual
-  edits will be overwritten; the configuration parser and schema accept it.
+- The optional `createWorkspacePreset` function accepts caller-supplied package
+  task definitions and optional runner defaults, then returns a version-2
+  `RunnerConfig` compatible with `task-runner.json`.
+- It may make convenience-only shape transformations, such as omitting empty
+  dependency lists. It does not inspect a repository, generate npm scripts,
+  infer package metadata, or choose tasks and task groups.
+- The caller owns deciding which package paths, scripts, commands, and
+  dependencies to include. The runner executes only the configuration it is
+  given.
 
 ## Operational limits
 

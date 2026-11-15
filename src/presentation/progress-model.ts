@@ -20,10 +20,11 @@ const statusOrder: readonly TaskStatus[] = [
   "running",
   "succeeded",
   "failed",
-  "skipped",
   "blocked",
   "cancelled",
 ];
+
+type FrameOptions = Readonly<{ appearance?: LiveAppearance; limit?: number }>;
 
 export class ProgressModel {
   private readonly events = new Map<TaskId, TaskEvent>();
@@ -145,7 +146,7 @@ export class ProgressModel {
     return row.hidden ? undefined : this.line(row, 0);
   }
 
-  frame(frame: number, limit = 100, appearance?: LiveAppearance): string {
+  frame(frame: number, { appearance, limit = 100 }: FrameOptions = {}): string {
     const visible: ProgressRow[] = [];
     let collapsedDepth: number | undefined;
     for (const row of this.rows) {
@@ -206,7 +207,6 @@ export class ProgressModel {
       pending: 0,
       ready: 0,
       running: 0,
-      skipped: 0,
       succeeded: 0,
     };
     const commands = this.rows.filter((row) => row.task.run !== undefined);

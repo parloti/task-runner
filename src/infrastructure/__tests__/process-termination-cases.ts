@@ -16,7 +16,6 @@ const task: CompiledTask = {
   id: make<TaskId>()("command"),
   package: ".",
   run: { command: `node -e "setTimeout(()=>{},30)"`, kind: "shell" },
-  skip: false,
 };
 
 /**

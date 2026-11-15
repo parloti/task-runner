@@ -4,8 +4,10 @@
 - Graph policy belongs in `src/domain`; scheduling and ports in
   `src/application`; IO and processes in `src/infrastructure`; CLI parsing in
   `src/presentation`; composition in `src/bootstrap`.
-- `src/presets` is an optional pure module. It accepts explicit package
-  descriptors; never import Workspaces Manager or infer tools from disk here.
+- `src/domain/presets.ts` is an optional pure config constructor. It accepts
+  complete caller-supplied task definitions and returns schema-compatible
+  runner JSON; never discover packages, infer tools, choose scripts, or define
+  workflow policy here.
 - Use version-2 package-local task definitions and readable local/qualified
   references, never serialized array identities or a separate entrypoint map.
   Omit empty dependencies; keep package pack as a direct npm command.
@@ -14,9 +16,9 @@
 - Start at the requested task or group members. Command `dependsOn` only orders
   selected tasks; never pull earlier phases into direct commands or aliases.
   Groups must explicitly list every command they intend to run.
-- Preset scripts for groups, aggregates, and root aliases call
-  `task-runner run`. Deciding that a script selecting one command calls npm
-  directly belongs to the consumer writing npm scripts (Workspaces Manager).
+- Consumers own package discovery, task-group policy, npm script definitions,
+  and selection of direct npm wrappers. The runner consumes the resulting
+  explicit config and never infers repository workflows.
 - Keep nested terminal progress presentation-only; use the validated plan for
   hierarchy and scheduler events for state. CI/non-TTY output must not animate.
 - Qualify cross-workspace task labels as `<unique-package-suffix>:<task>`, using

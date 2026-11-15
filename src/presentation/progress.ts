@@ -114,10 +114,13 @@ export class TerminalProgress {
     const taskLimit = Math.max(1, (this.output.rows ?? 24) - 2);
     const visibleTaskLimit = Math.min(this.maxTasks, taskLimit);
     this.getRedraw()(
-      this.getModel().frame(this.frame++, visibleTaskLimit, {
-        color:
-          process.env["NO_COLOR"] === undefined &&
-          process.env["FORCE_COLOR"] !== "0",
+      this.getModel().frame(this.frame++, {
+        appearance: {
+          color:
+            process.env["NO_COLOR"] === undefined &&
+            process.env["FORCE_COLOR"] !== "0",
+        },
+        limit: visibleTaskLimit,
       }),
     );
   }

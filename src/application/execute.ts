@@ -102,13 +102,9 @@ export async function executeGraph(
           transition(task, "blocked");
         } else if (controller.signal.aborted) {
           transition(task, "cancelled");
-        } else if (
-          dependencies.every(
-            (state) => state === "succeeded" || state === "skipped",
-          )
-        ) {
-          if (task.skip || task.run === undefined) {
-            transition(task, task.skip ? "skipped" : "succeeded");
+        } else if (dependencies.every((state) => state === "succeeded")) {
+          if (task.run === undefined) {
+            transition(task, "succeeded");
           } else if (active.size < options.concurrency) {
             start(task);
           } else continue;

@@ -11,13 +11,7 @@ const id = make<TaskId>()("check");
 const graph = new Map<TaskId, CompiledTask>([
   [
     id,
-    {
-      dependsOn: [],
-      id,
-      package: ".",
-      run: { kind: "npm", script: "check" },
-      skip: false,
-    },
+    { dependsOn: [], id, package: ".", run: { kind: "npm", script: "check" } },
   ],
 ]);
 
@@ -160,7 +154,7 @@ describe("terminal progress", () => {
         taskId(`child-${String(index)}`),
       );
       const tasks = new Map<TaskId, CompiledTask>([
-        [root, { dependsOn: children, id: root, package: ".", skip: false }],
+        [root, { dependsOn: children, id: root, package: "." }],
         ...children.map((child): [TaskId, CompiledTask] => [
           child,
           {
@@ -168,7 +162,6 @@ describe("terminal progress", () => {
             id: child,
             package: ".",
             run: { kind: "npm", script: child },
-            skip: false,
           },
         ]),
       ]);

@@ -1,14 +1,13 @@
 # Architecture
 
-| Component            | Ownership                                                               | Dependencies                          |
-| -------------------- | ----------------------------------------------------------------------- | ------------------------------------- |
-| `src/domain`         | Task/config/event contracts, graph compilation, and readable task names | `ts-brand`                            |
-| `src/application`    | Scheduler, executor port, and run options                               | Domain                                |
-| `src/infrastructure` | Config/manifests, processes, npm discovery                              | Domain and Node                       |
-| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                    | Application, domain, Node, log-update |
-| `src/bootstrap`      | Runtime composition, logging, signals, executable                       | All layers                            |
-| `src/presets`        | Optional pure workflow construction                                     | Domain contracts                      |
-| `tests/e2e`          | Real subprocess and consumer behavior                                   | Public/runtime boundaries             |
+| Component            | Ownership                                                                                             | Dependencies                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `src/domain`         | Task/config/event contracts, graph compilation, readable task names, and optional preset construction | `ts-brand`                            |
+| `src/application`    | Scheduler, executor port, and run options                                                             | Domain                                |
+| `src/infrastructure` | Config parsing, processes, npm CLI discovery                                                          | Domain and Node                       |
+| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                                                  | Application, domain, Node, log-update |
+| `src/bootstrap`      | Runtime composition, logging, signals, executable                                                     | All layers                            |
+| `tests/e2e`          | Real subprocess and consumer behavior                                                                 | Public/runtime boundaries             |
 
 - Version-2 package-local JSON is validated at the IO boundary, including
   optional runner defaults. Bootstrap combines configured defaults with explicit
@@ -16,6 +15,9 @@
   the library runner. Graph compilation resolves local/qualified references
   into one graph with canonical readable IDs (root names or
   `<package>#<task>`). No serialized arrays or entrypoint map.
+- The runner reads the explicit config and does not inspect package manifests.
+  npm command execution is delegated to the configured npm CLI invocation,
+  including `--if-present` for optional tasks.
 - Graph task IDs become nominal `TaskId` values after reference validation.
 - Graph selection recursively expands commandless groups but stops at commands.
   After selection, command dependencies are retained only when their targets
@@ -50,8 +52,12 @@
 - Node's `styleText` colors live status icons; presentation applies color opt-outs
   and leaves scheduler events, labels, and plain output unstyled.
 - Listr2 is not a dependency; rendering never introduces a second scheduler.
-- Presets expose root `validate:<workspace>` groups for monorepo validation,
-  reusing shared task identities and build-gated checks without workspace lint.
+- The optional config constructor accepts complete task definitions from its
+  caller and returns schema-compatible version-2 JSON. It does not create
+  repository-specific scripts, task groups, or package inventories.
+- Preset construction lives in `src/domain/presets.ts` and depends only on
+  domain config types, so it follows the existing domain boundary.
 - The package exports compiled JavaScript, declarations, optional presets, and
   a JSON schema. Production consumers do not resolve TypeScript source.
-- ESLint enforces inward imports for domain/application/presets.
+- ESLint enforces inward imports for domain/application; preset construction
+  lives within the domain boundary and follows its dependency rule.

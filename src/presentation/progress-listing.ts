@@ -15,5 +15,5 @@ export function renderPersistentFrame(
   maxTasks: number,
   color: boolean,
 ): string {
-  return model.frame(frame, maxTasks, { color });
+  return model.frame(frame, { appearance: { color }, limit: maxTasks });
 }

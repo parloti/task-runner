@@ -1,3 +1,7 @@
-export * from "./configuration";
-export * from "./process";
-export * from "./task-log";
+export {
+  findConfiguration,
+  findPackage,
+  parseConfiguration,
+} from "./configuration";
+export { createProcessExecutor } from "./process";
+export { taskLogPath } from "./task-log";

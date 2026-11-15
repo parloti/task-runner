@@ -4,8 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompiledTask, TaskEvent, TaskId, TaskStatus } from "../domain";
 
 import { executeGraph } from "../application";
-import { compileGraph } from "../domain";
-import { createWorkspacePreset } from "../presets";
 import { ProgressModel } from "./progress-model";
 
 const id = make<TaskId>();
@@ -18,8 +16,14 @@ const task = (
   dependsOn: dependencies.map((dependency) => id(dependency)),
   id: id(name),
   package: packagePath,
-  skip: false,
-  ...(command && { run: { kind: "npm", script: name } as const }),
+  ...(command && {
+    run: {
+      kind: "npm",
+      script: name.startsWith(`${packagePath}#`)
+        ? name.slice(packagePath.length + 1)
+        : name,
+    } as const,
+  }),
 });
 const graphFor = (...tasks: CompiledTask[]) =>
   new Map(tasks.map((item) => [item.id, item]));
@@ -72,59 +76,27 @@ describe("nested progress model", () => {
       expect(model.summary()).toBe("Tasks: 2 | pending: 1 | succeeded: 1");
     },
   );
-  it("counts only unique command tasks independently of collapse and frame limits", () => {
-    // Arrange
-    const states: TaskStatus[] = [
-      "pending",
-      "ready",
-      "running",
-      "succeeded",
-      "failed",
-      "skipped",
-      "blocked",
-      "cancelled",
-    ];
-    const model = new ProgressModel(
-      graphFor(
-        task("root", ["group", ...states], false),
-        task("group", ["child"], false),
-        task("child"),
-        ...states.map((name) => task(name)),
-      ),
-      "root",
-    );
-    // Act
-    expect(model.summary()).toBe("Tasks: 9 | pending: 9");
-    for (const state of states) model.update(event(state, state));
-    model.update(event("child", "succeeded"));
-    model.update(event("group", "succeeded"));
-    const limited = model.frame(0, 2);
-    // Assert
-    expect(limited).not.toContain("child");
-    expect(model.summary()).toBe(
-      "Tasks: 9 | pending: 1 | ready: 1 | running: 1 | succeeded: 2 | failed: 1 | skipped: 1 | blocked: 1 | cancelled: 1",
-    );
-    // Act
-    model.update(event("running", "succeeded"));
-    model.update(event("root", "blocked"));
-    // Assert
-    expect(model.summary()).toBe(
-      "Tasks: 9 | pending: 1 | ready: 1 | succeeded: 3 | failed: 1 | skipped: 1 | blocked: 1 | cancelled: 1",
-    );
-  });
-
   it("counts shared commands once and excludes omitted aggregate wrappers", () => {
     // Arrange
-    const preset = createWorkspacePreset([
-      { name: "root", path: "." },
-      { name: "lib", path: "packages/lib", utility: true },
-      { internalDependencies: ["lib"], name: "web", path: "apps/web" },
-    ]);
     const target = "validate";
-    const graph = compileGraph(
-      preset.config,
-      target,
-      new Map(Object.entries(preset.scripts)),
+    const graph = graphFor(
+      task(target, ["validate:lib", "validate:web"], false),
+      task("validate:lib", ["packages/lib#build"], false),
+      task("validate:web", ["apps/web#build"], false),
+      task(
+        "packages/lib#build",
+        ["packages/lib#compile"],
+        false,
+        "packages/lib",
+      ),
+      task(
+        "apps/web#build",
+        ["packages/lib#build", "apps/web#compile"],
+        false,
+        "apps/web",
+      ),
+      task("packages/lib#compile", [], true, "packages/lib"),
+      task("apps/web#compile", [], true, "apps/web"),
     );
     const model = new ProgressModel(graph, target, false);
     const commandCount = graph
@@ -147,7 +119,7 @@ describe("nested progress model", () => {
     expect(model.summary()).toBe(
       `Tasks: ${String(commandCount)} | succeeded: ${String(commandCount)}`,
     );
-    expect(model.frame(0, 1000)).not.toMatch(/^ {2}\+ build /m);
+    expect(model.frame(0, { limit: 1000 })).not.toMatch(/^ {2}\+ build /m);
   });
 
   it.each([1, 4])(
@@ -239,8 +211,10 @@ describe("nested progress model", () => {
     );
     const model = new ProgressModel(tasks, group, false);
     // Act
-    const frame = model.frame(0, 50);
-    const direct = new ProgressModel(tasks, contract, false).frame(0, 50);
+    const frame = model.frame(0, { limit: 50 });
+    const direct = new ProgressModel(tasks, contract, false).frame(0, {
+      limit: 50,
+    });
     model.update(event("clean", "running", 13_600));
     // Assert
     expect(frame).toBe(
@@ -278,7 +252,7 @@ describe("nested progress model", () => {
     );
     // Act
     model.update(event(tests, "blocked", 107_200));
-    const frame = model.frame(0, 30);
+    const frame = model.frame(0, { limit: 30 });
     // Assert
     expect(frame).toContain("validate:automation (pending)");
     expect(frame).toContain("  ! test:all (blocked, 107.2s)");

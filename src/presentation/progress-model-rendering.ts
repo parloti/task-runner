@@ -24,7 +24,6 @@ export const markers: Record<Exclude<TaskStatus, "running">, string> = {
   failed: "x",
   pending: ".",
   ready: ">",
-  skipped: "-",
   succeeded: "+",
 };
 
@@ -34,7 +33,6 @@ export const liveMarkers: Record<Exclude<TaskStatus, "running">, string> = {
   failed: "\u{2716}",
   pending: "\u{25A1}",
   ready: "\u{203A}",
-  skipped: "\u{2193}",
   succeeded: "\u{2714}",
 };
 
@@ -45,7 +43,6 @@ export const colors = {
   pending: "gray",
   ready: "yellow",
   running: "cyan",
-  skipped: "gray",
   succeeded: "green",
 } as const satisfies Record<TaskStatus, string>;
 

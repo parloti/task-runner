@@ -11,13 +11,7 @@ const id = make<TaskId>()("check");
 const graph = new Map<TaskId, CompiledTask>([
   [
     id,
-    {
-      dependsOn: [],
-      id,
-      package: ".",
-      run: { kind: "npm", script: "check" },
-      skip: false,
-    },
+    { dependsOn: [], id, package: ".", run: { kind: "npm", script: "check" } },
   ],
 ]);
 
@@ -49,14 +43,8 @@ describe("terminal progress", () => {
       const compile = taskId("compile");
       const test = taskId("test");
       const tasks = new Map<TaskId, CompiledTask>([
-        [
-          build,
-          { dependsOn: [clean, compile], id: build, package: ".", skip: false },
-        ],
-        [
-          root,
-          { dependsOn: [build, test], id: root, package: ".", skip: false },
-        ],
+        [build, { dependsOn: [clean, compile], id: build, package: "." }],
+        [root, { dependsOn: [build, test], id: root, package: "." }],
         ...[clean, compile, test].map((task): [TaskId, CompiledTask] => [
           task,
           {
@@ -64,7 +52,6 @@ describe("terminal progress", () => {
             id: task,
             package: ".",
             run: { kind: "npm", script: task },
-            skip: false,
           },
         ]),
       ]);
@@ -109,7 +96,7 @@ describe("terminal progress", () => {
         taskId(`child-${String(index)}`),
       );
       const tasks = new Map<TaskId, CompiledTask>([
-        [root, { dependsOn: children, id: root, package: ".", skip: false }],
+        [root, { dependsOn: children, id: root, package: "." }],
         ...children.map((child): [TaskId, CompiledTask] => [
           child,
           {
@@ -117,7 +104,6 @@ describe("terminal progress", () => {
             id: child,
             package: ".",
             run: { kind: "npm", script: child },
-            skip: false,
           },
         ]),
       ]);

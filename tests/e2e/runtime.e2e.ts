@@ -17,23 +17,24 @@ import { runTasks } from "../../src";
 /**
  * Create a temporary package fixture for runtime integration scenarios.
  * @param tasks Root package task definitions for the fixture.
- * @param scripts Optional npm scripts declared by the fixture package.
+ * @param scripts When provided, creates a package manifest with these scripts.
  * @returns The fixture path and parsed runner configuration.
  * @example `fixture({ build: { run: command } })` creates a runnable fixture.
  */
 function fixture(
   tasks: RunnerConfig["packages"][string],
-  scripts: Record<string, string> = {},
+  scripts?: Record<string, string>,
 ) {
   const directory = mkdtempSync(path.join(os.tmpdir(), "task runner "));
   const config: RunnerConfig = {
     packages: { ".": { ...tasks, check: { dependsOn: ["end"] } } },
     version: 2,
   };
-  writeFileSync(
-    path.join(directory, "package.json"),
-    JSON.stringify({ name: "fixture", scripts }),
-  );
+  if (scripts !== undefined)
+    writeFileSync(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name: "fixture", scripts }),
+    );
   writeFileSync(
     path.join(directory, "task-runner.json"),
     JSON.stringify(config),
@@ -246,6 +247,28 @@ describe("real runtime", () => {
         runTasks("check", { concurrency: 0, cwd: directory }),
       ).rejects.toThrow("Concurrency");
       expect(existsSync(path.join(directory, "logs"))).toBe(false);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
+  it("runs shell tasks without a package manifest", async () => {
+    // Arrange
+    const directory = fixture({
+      end: {
+        run: {
+          command: `node -e "require('fs').writeFileSync('ran','yes')"`,
+          kind: "shell",
+        },
+      },
+    });
+    try {
+      // Act
+      const result = await runTasks("check", { cwd: directory });
+      // Assert
+      expect(result.success).toBe(true);
+      expect(existsSync(path.join(directory, "package.json"))).toBe(false);
+      expect(readFileSync(path.join(directory, "ran"), "utf8")).toBe("yes");
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }
