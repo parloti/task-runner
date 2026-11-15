@@ -45,7 +45,7 @@ export async function runTasks(
   const concurrency =
     options.concurrency ??
     config.defaults?.concurrency ??
-    (ci ? 1 : Math.max(1, availableParallelism() - 1));
+    (ci ? 1 : Math.max(1, Math.floor(availableParallelism() / 2)));
   if (!Number.isSafeInteger(concurrency) || concurrency < 1)
     throw new Error("Concurrency must be a positive integer");
   options.onPlan?.(graph, target, packagePaths);

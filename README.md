@@ -152,7 +152,8 @@ errors; they never set process exit status or install global signal handlers.
   through npm and fail as task execution if missing; an optional npm script
   adds `--if-present` and succeeds when absent.
 - Execute shared tasks once per invocation, with one global leaf-command limit.
-- Default concurrency is available CPUs minus one, with a minimum of one.
+- Default concurrency is half the available CPUs, rounded down, with a minimum
+  of one.
   `defaults.concurrency` or `--concurrency N` sets a positive integer limit.
   Non-empty `CI`, `defaults.ci`, or `--ci` defaults to sequential commands and
   streams output; configured or CLI concurrency takes precedence.

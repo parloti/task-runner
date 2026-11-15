@@ -30,7 +30,8 @@ beforeEach(() => {
 
 describe("runtime concurrency policy", () => {
   it.each([
-    { ci: false, cpus: 8, expected: 7, requested: undefined },
+    { ci: false, cpus: 8, expected: 4, requested: undefined },
+    { ci: false, cpus: 5, expected: 2, requested: undefined },
     { ci: false, cpus: 1, expected: 1, requested: undefined },
     { ci: true, cpus: 8, expected: 1, requested: undefined },
     { ci: false, cpus: 8, expected: 3, requested: 3 },
@@ -94,7 +95,7 @@ describe("runtime concurrency policy", () => {
         options: { concurrency: 4 },
       },
       { defaults: { ci: true }, expected: 1, options: {} },
-      { defaults: { ci: true }, expected: 7, options: { ci: false } },
+      { defaults: { ci: true }, expected: 4, options: { ci: false } },
       { defaults: { ci: true, concurrency: 2 }, expected: 2, options: {} },
     ];
     try {

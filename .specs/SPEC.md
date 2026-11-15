@@ -48,7 +48,7 @@
 - Selected prerequisites must succeed before dependents start.
 - Each task identity executes once per run. Independent tasks can overlap up to
   the global leaf-command limit; dependency waits do not consume slots.
-- Default concurrency is `max(1, availableParallelism() - 1)`.
+- Default concurrency is `max(1, floor(availableParallelism() / 2))`.
   A non-empty CI variable, `--ci`, or `defaults.ci` defaults to one active
   command and streamed output. An explicit positive integer concurrency from
   the CLI or `defaults` overrides either default.
