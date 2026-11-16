@@ -92,6 +92,7 @@ export async function runTasks(
         ),
         concurrency,
         forceRunTasks: priorityTasks,
+        keepGoing: options.keepGoing ?? config.defaults?.keepGoing ?? false,
         onEvent,
         priorityTasks,
         ...(options.signal !== undefined && { signal: options.signal }),

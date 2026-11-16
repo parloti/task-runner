@@ -78,6 +78,10 @@ describe("configuration boundary", () => {
       value: { ...valid(), defaults: { collapse: "no" } },
     },
     {
+      error: "Expected boolean: defaults keepGoing",
+      value: { ...valid(), defaults: { keepGoing: "yes" } },
+    },
+    {
       error: "Expected boolean: defaults scroll",
       value: { ...valid(), defaults: { scroll: 1 } },
     },
@@ -185,6 +189,7 @@ describe("configuration boundary", () => {
         ci: false,
         collapse: true,
         concurrency: 3,
+        keepGoing: true,
         maxTasks: 500,
         scroll: false,
       },
@@ -192,6 +197,7 @@ describe("configuration boundary", () => {
         ci: false,
         collapse: true,
         concurrency: 3,
+        keepGoing: true,
         maxTasks: 500,
         scroll: false,
       },

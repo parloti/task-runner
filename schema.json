@@ -22,6 +22,10 @@
           "minimum": 1,
           "maximum": 9007199254740991
         },
+        "keepGoing": {
+          "type": "boolean",
+          "description": "Continue independent tasks after a command fails; tasks that depend on a failed task remain blocked."
+        },
         "maxTasks": {
           "type": "integer",
           "minimum": 1,

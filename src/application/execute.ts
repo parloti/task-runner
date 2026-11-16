@@ -18,6 +18,7 @@ export interface ExecutionOptions {
   readonly cache?: ExecutionCache;
   readonly concurrency: number;
   readonly forceRunTasks?: readonly TaskId[];
+  readonly keepGoing?: boolean;
   readonly onEvent?: (event: TaskEvent) => void;
   readonly priorityTasks?: readonly TaskId[];
   readonly signal?: AbortSignal;
@@ -103,7 +104,8 @@ export async function executeGraph(
         const interrupted = controller.signal.aborted;
         const cancelled = failure instanceof TaskCancelledError;
         if (!cancelled) errors.push(failure);
-        controller.abort(failure);
+        const abortSiblings = !options.keepGoing || interrupted || cancelled;
+        if (abortSiblings) controller.abort(failure);
         transition(
           task,
           interrupted || cancelled ? "cancelled" : "failed",

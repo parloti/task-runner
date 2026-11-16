@@ -11,6 +11,30 @@ describe("command-line contract", () => {
     expect(result.options.noCache).toBe(true);
     expect(parseArguments(["validate"]).options).not.toHaveProperty("noCache");
   });
+  it.each([
+    { args: ["build", "--keep-going"], expected: true },
+    { args: ["build", "--no-keep-going"], expected: false },
+    { args: ["build", "--keep-going", "--no-keep-going"], expected: false },
+    { args: ["build", "--no-keep-going", "--keep-going"], expected: true },
+  ])("parses keep-going override: $args", ({ args, expected }) => {
+    // Arrange & Act
+    const result = parseArguments(args);
+    // Assert
+    expect(result.options.keepGoing).toBe(expected);
+  });
+  it.each([
+    { args: ["run", "--", "--keep-going"], entrypoint: "--keep-going" },
+    { args: ["run", "--", "--no-keep-going"], entrypoint: "--no-keep-going" },
+  ])(
+    "does not parse task names after -- as options: $entrypoint",
+    ({ args, entrypoint }) => {
+      // Arrange & Act
+      const result = parseArguments(args);
+      // Assert
+      expect(result.entrypoint).toBe(entrypoint);
+      expect(result.options).not.toHaveProperty("keepGoing");
+    },
+  );
   it("accepts --scroll without changing execution options", () => {
     // Arrange & Act
     const result = parseArguments([

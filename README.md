@@ -65,11 +65,11 @@ the project. The project-maintenance tool or project owner that writes this file
 owns those decisions.
 
 The optional `defaults` object sets runner behavior when the corresponding CLI
-option is omitted. It accepts `ci`, `concurrency`, `collapse`, `maxTasks`,
-`noCache`, and `scroll`. An explicit CLI option takes precedence over its
-configured default; otherwise built-in defaults apply. The `CI` environment
-variable still enables CI behavior, and an explicitly configured concurrency
-can override its sequential concurrency default.
+option is omitted. It accepts `ci`, `concurrency`, `collapse`, `keepGoing`,
+`maxTasks`, `noCache`, and `scroll`. An explicit CLI option takes precedence
+over its configured default; otherwise built-in defaults apply. The `CI`
+environment variable still enables CI behavior, and an explicitly configured
+concurrency can override its sequential concurrency default.
 
 Keep `compile` and `test` as ordinary npm scripts; add
 `"check": "task-runner run check"` to `package.json`. Task references are explicit,
@@ -85,6 +85,7 @@ npm run check -- --collapse false
 npm run check -- --collapse false --max-tasks 150
 npm run check -- --no-scroll --collapse false --max-tasks 1000
 npm run check -- --no-cache
+npm run check -- --keep-going
 ```
 
 Package keys are relative paths using `/`, or `.` for the root. Each package
@@ -108,8 +109,8 @@ Invoking from a workspace selects that package's task without accidentally
 selecting a root aggregate. Nested
 directories select their nearest containing configured package.
 `--config <path>` and `--package <relative-path>` override discovery/selection.
-Settings such as `--concurrency`, `--ci`, `--collapse`, `--max-tasks`, and
-`--scroll` override matching values in `defaults`.
+Settings such as `--concurrency`, `--ci`, `--collapse`, `--keep-going`,
+`--max-tasks`, and `--scroll` override matching values in `defaults`.
 The schema is exported as `@codeperfect/task-runner/schema.json`.
 
 ### Persistent successful-result cache
@@ -209,9 +210,13 @@ errors; they never set process exit status or install global signal handlers.
   `defaults.concurrency` or `--concurrency N` sets a positive integer limit.
   Non-empty `CI`, `defaults.ci`, or `--ci` defaults to sequential commands and
   streams output; configured or CLI concurrency takes precedence.
-- On failure, stop admission, block dependents, cancel owned active processes,
-  and wait for cleanup. Windows cancellation terminates the owned tree;
-  POSIX cancellation escalates from SIGTERM to SIGKILL.
+- By default, a command failure stops admission, blocks dependents, cancels
+  active processes, and waits for cleanup. Set `defaults.keepGoing: true`, use
+  `--keep-going`, or call `runTasks` with `keepGoing: true` to continue
+  independent work; dependents of failed tasks remain blocked. Use
+  `--no-keep-going` to restore fail-fast behavior when the config enables it.
+  Windows cancellation terminates the owned tree; POSIX cancellation escalates
+  from SIGTERM to SIGKILL.
 - Interactive terminals show nested groups with animated running tasks,
   durations, readable package labels, and distinct waiting/ready/success/failure/
   blocked/cancelled states. Unstarted and successful groups collapse by

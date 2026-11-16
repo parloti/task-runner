@@ -29,8 +29,10 @@ export function parseArguments(args: string[]): ParseArguments {
       concurrency: { type: "string" },
       config: { type: "string" },
       help: { short: "h", type: "boolean" },
+      "keep-going": { type: "boolean" },
       "max-tasks": { type: "string" },
       "no-cache": { type: "boolean" },
+      "no-keep-going": { type: "boolean" },
       "no-scroll": { type: "boolean" },
       package: { type: "string" },
       scroll: { default: true, type: "boolean" },
@@ -40,7 +42,7 @@ export function parseArguments(args: string[]): ParseArguments {
   const names = positionals[0] === "run" ? positionals.slice(1) : positionals;
   if (!values.help && (names.length !== 1 || !names[0]))
     throw new Error(
-      "Usage: task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
+      "Usage: task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--keep-going|--no-keep-going] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
     );
   const concurrency =
     values.concurrency === undefined ? undefined : Number(values.concurrency);
@@ -63,6 +65,14 @@ export function parseArguments(args: string[]): ParseArguments {
   )
     throw new Error("Max tasks must be a positive integer");
   const scroll = values["no-scroll"] !== true && values.scroll;
+  const optionEnd = args.indexOf("--");
+  const optionArguments = optionEnd === -1 ? args : args.slice(0, optionEnd);
+  const keepGoingArgument = optionArguments.lastIndexOf("--keep-going");
+  const noKeepGoingArgument = optionArguments.lastIndexOf("--no-keep-going");
+  const keepGoing =
+    keepGoingArgument === -1 && noKeepGoingArgument === -1
+      ? undefined
+      : keepGoingArgument > noKeepGoingArgument;
   return {
     entrypoint: names[0] ?? "",
     help: values.help === true,
@@ -75,6 +85,7 @@ export function parseArguments(args: string[]): ParseArguments {
         collapse: values.collapse === "true",
       }),
       ...(maxTasks !== undefined && { maxTasks }),
+      ...(keepGoing !== undefined && { keepGoing }),
       ...(values["no-cache"] !== undefined && { noCache: values["no-cache"] }),
       scroll,
     },

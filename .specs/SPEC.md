@@ -11,11 +11,11 @@
 
 ## Execution contract
 
-- Input: version-2 JSON config, task name, package scope, CI/concurrency options,
-  cache bypass, and optional cancellation signal. The config declares every package path,
+- Input: version-2 JSON config, task name, package scope, CI/concurrency and
+  keep-going options, cache bypass, and optional cancellation signal. The config declares every package path,
   task, dependency, and npm script reference the runner may execute.
 - The optional root `defaults` object can set `ci`, `concurrency`, `collapse`,
-  `maxTasks`, `noCache`, and `scroll`. Explicit CLI values take precedence over
+  `keepGoing`, `maxTasks`, `noCache`, and `scroll`. Explicit CLI values take precedence over
   configured defaults; omitted values use built-in defaults. A non-empty `CI`
   environment variable continues to enable CI behavior. Configured or CLI
   concurrency can override CI's sequential concurrency default.
@@ -52,8 +52,15 @@
   A non-empty CI variable, `--ci`, or `defaults.ci` defaults to one active
   command and streamed output. An explicit positive integer concurrency from
   the CLI or `defaults` overrides either default.
-- A command failure stops admission, blocks dependent work, cancels active work,
-  and awaits owned subprocess/stream cleanup. Failure context is preserved.
+- By default, a command failure stops admission, blocks dependent work, cancels
+  active work, and awaits owned subprocess/stream cleanup. Failure context is
+  preserved.
+- `defaults.keepGoing`, `--keep-going`, or library option `keepGoing: true`
+  allows independent selected tasks to continue after a command fails.
+  Dependents of failed tasks become blocked. Active independent tasks are not
+  cancelled, and their subprocess/stream cleanup is awaited. An explicit
+  `--no-keep-going` or library option `keepGoing: false` restores fail-fast
+  behavior, taking precedence over the configured default.
 - Command tasks whose final state is `failed` are saved as candidates for the
   next runner invocation. The record is scoped to the selected config file.
   Still-configured candidates are added to that invocation's selected graph and

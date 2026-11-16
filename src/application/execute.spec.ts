@@ -132,6 +132,29 @@ describe("execution", () => {
     expect(result.errors).toHaveLength(1);
   });
 
+  it("keeps running independent work after failure and blocks dependents", async () => {
+    const calls: string[] = [];
+    let siblingWasAborted = false;
+    const result = await executeGraph(
+      graph(),
+      async (task, signal) => {
+        calls.push(task.id);
+        if (task.id === "a") throw new Error("broken");
+        if (task.id !== "b") return;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        siblingWasAborted = signal.aborted;
+      },
+      { concurrency: 2, keepGoing: true },
+    );
+    expect(result.success).toBe(false);
+    expect(calls).toEqual(["shared", "a", "b"]);
+    expect(siblingWasAborted).toBe(false);
+    expect(result.states.get(taskReference(".", "a"))).toBe("failed");
+    expect(result.states.get(taskReference(".", "b"))).toBe("succeeded");
+    expect(result.states.get(taskReference(".", "end"))).toBe("blocked");
+    expect(result.errors).toHaveLength(1);
+  });
+
   it("normalizes non-Error executor failures without losing the cause", async () => {
     // Arrange & Act
     const failure = normalizeExecutionError("external failure");

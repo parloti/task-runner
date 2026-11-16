@@ -92,11 +92,27 @@ describe("runtime concurrency policy", () => {
       {
         defaults: { concurrency: 2 },
         expected: 4,
+        expectedKeepGoing: false,
         options: { concurrency: 4 },
       },
-      { defaults: { ci: true }, expected: 1, options: {} },
-      { defaults: { ci: true }, expected: 4, options: { ci: false } },
-      { defaults: { ci: true, concurrency: 2 }, expected: 2, options: {} },
+      {
+        defaults: { ci: true, keepGoing: true },
+        expected: 1,
+        expectedKeepGoing: true,
+        options: {},
+      },
+      {
+        defaults: { ci: true, keepGoing: true },
+        expected: 4,
+        expectedKeepGoing: false,
+        options: { ci: false, keepGoing: false },
+      },
+      {
+        defaults: { ci: true, concurrency: 2, keepGoing: false },
+        expected: 2,
+        expectedKeepGoing: true,
+        options: { keepGoing: true },
+      },
     ];
     try {
       // Act
@@ -112,6 +128,9 @@ describe("runtime concurrency policy", () => {
       expect(
         vi.mocked(executeGraph).mock.calls.map((call) => call[2].concurrency),
       ).toEqual(scenarios.map(({ expected }) => expected));
+      expect(
+        vi.mocked(executeGraph).mock.calls.map((call) => call[2].keepGoing),
+      ).toEqual(scenarios.map(({ expectedKeepGoing }) => expectedKeepGoing));
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }

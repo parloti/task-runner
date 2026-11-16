@@ -24,6 +24,9 @@
   After selection, command dependencies are retained only when their targets
   are selected. Groups explicitly list their members; aliases use the same rule.
 - A single scheduler admits ready leaf commands and owns cancellation/state.
+- The scheduler stops admission and cancels active work after failure by default;
+  `keepGoing` leaves independent work eligible and blocks dependents of failed
+  tasks.
 - The validated plan can include prior failed command targets alongside the
   requested entrypoint. The scheduler gives those targets and their selected
   prerequisites queue priority without creating a second execution path.

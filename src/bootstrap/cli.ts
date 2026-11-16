@@ -25,7 +25,7 @@ try {
   const input = parseArguments(args);
   if (input.help) {
     console.log(
-      "task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
+      "task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--keep-going|--no-keep-going] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
     );
   } else {
     const configPath = findConfiguration(process.cwd(), input.options.config);
