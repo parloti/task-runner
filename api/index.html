@@ -46,17 +46,17 @@ discover workspace packages or decide which scripts and task groups belong in
 the project. The project-maintenance tool or project owner that writes this file
 owns those decisions.</p>
 <p>The optional <code>defaults</code> object sets runner behavior when the corresponding CLI
-option is omitted. It accepts <code>ci</code>, <code>concurrency</code>, <code>collapse</code>, <code>maxTasks</code>, and
-<code>scroll</code>. An explicit CLI option takes precedence over its configured default;
-otherwise built-in defaults apply. The <code>CI</code> environment variable still enables
-CI behavior, and an explicitly configured concurrency can override its
-sequential concurrency default.</p>
+option is omitted. It accepts <code>ci</code>, <code>concurrency</code>, <code>collapse</code>, <code>keepGoing</code>,
+<code>maxTasks</code>, <code>noCache</code>, and <code>scroll</code>. An explicit CLI option takes precedence
+over its configured default; otherwise built-in defaults apply. The <code>CI</code>
+environment variable still enables CI behavior, and an explicitly configured
+concurrency can override its sequential concurrency default.</p>
 <p>Keep <code>compile</code> and <code>test</code> as ordinary npm scripts; add
 <code>&quot;check&quot;: &quot;task-runner run check&quot;</code> to <code>package.json</code>. Task references are explicit,
 not inferred from shell text. Use <code>{ &quot;kind&quot;: &quot;shell&quot;, &quot;command&quot;: &quot;...&quot; }</code> for an
 intentional platform-specific shell command. npm tasks accept an <code>args</code> array,
 forwarded after <code>npm run &lt;script&gt; --</code>, and preserve npm lifecycle hooks.</p>
-<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span><br/><span class="hl-1">npm run check -- --no-cache</span>
+<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span><br/><span class="hl-1">npm run check -- --no-cache</span><br/><span class="hl-1">npm run check -- --keep-going</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Package keys are relative paths using <code>/</code>, or <code>.</code> for the root. Each package
@@ -80,8 +80,8 @@ Invoking from a workspace selects that package's task without accidentally
 selecting a root aggregate. Nested
 directories select their nearest containing configured package.
 <code>--config &lt;path&gt;</code> and <code>--package &lt;relative-path&gt;</code> override discovery/selection.
-Settings such as <code>--concurrency</code>, <code>--ci</code>, <code>--collapse</code>, <code>--max-tasks</code>, and
-<code>--scroll</code> override matching values in <code>defaults</code>.
+Settings such as <code>--concurrency</code>, <code>--ci</code>, <code>--collapse</code>, <code>--keep-going</code>,
+<code>--max-tasks</code>, and <code>--scroll</code> override matching values in <code>defaults</code>.
 The schema is exported as <code>@codeperfect/task-runner/schema.json</code>.</p>
 <h3 id="persistent-successful-result-cache" class="tsd-anchor-link">Persistent successful-result cache<a href="#persistent-successful-result-cache" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>Opt deterministic commands or groups into caching with explicit file inputs:</p>
@@ -99,10 +99,20 @@ Node/platform changes, and missing/modified outputs invalidate entries.
 Progress shows <code>cached</code> and the prior success time; JSONL events explain misses.
 Completed checks remain reusable if another task fails. Artifacts are verified
 in place, not restored; external side effects must not be cached.</p>
-<p><code>--no-cache</code> or <code>runTasks(&quot;check&quot;, { noCache: true })</code> runs the complete selected
-plan and refreshes successful records. Direct npm calls bypass the runner and
-remain unaffected. Cache IO or malformed-record failures are reported; bypass
-can repair malformed entries through successful execution.</p>
+<p><code>defaults.noCache: true</code>, <code>--no-cache</code>, or <code>runTasks(&quot;check&quot;, { noCache: true })</code>
+runs the complete selected plan and refreshes successful records. Direct npm
+calls bypass the runner and remain unaffected. Cache IO or malformed-record
+failures are reported; bypass can repair malformed entries through successful
+execution.</p>
+<h3 id="previous-run-failed-tasks" class="tsd-anchor-link">Previous-run failed tasks<a href="#previous-run-failed-tasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>The runner saves task IDs that ended with <code>failed</code> in the latest completed run.
+The record is scoped to the selected config file. On the next runner invocation,
+still-configured command tasks from that list are added to the requested plan
+with scheduler priority. Canceled, blocked, and removed tasks are skipped.
+Cached groups containing a candidate are bypassed so it executes. Every
+completed run replaces the list, so a run with no failed tasks clears it. When
+invocations overlap, the latest completed run's list wins. This state is stored
+in <code>.cache/task-runner</code> beside the successful-result cache.</p>
 <h2 id="library-and-presets" class="tsd-anchor-link">Library and presets<a href="#library-and-presets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <pre><code class="typescript"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">runTasks</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">createWorkspacePreset</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner/presets&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">preset</span><span class="hl-1"> = </span><span class="hl-0">createWorkspacePreset</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-7">packages:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;.&quot;</span><span class="hl-7">:</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">compile:</span><span class="hl-1"> { </span><span class="hl-7">run:</span><span class="hl-1"> { </span><span class="hl-7">kind:</span><span class="hl-1"> </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-7">script:</span><span class="hl-1"> </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-7">check:</span><span class="hl-1"> { </span><span class="hl-7">dependsOn:</span><span class="hl-1"> [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">] },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">runTasks</span><span class="hl-1">(</span><span class="hl-2">&quot;check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-7">cwd:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/repository&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">signal:</span><span class="hl-1"> </span><span class="hl-7">abortController</span><span class="hl-1">.</span><span class="hl-7">signal</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">onEvent</span><span class="hl-7">:</span><span class="hl-1"> (</span><span class="hl-7">event</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-7">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">status</span><span class="hl-1">, </span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">taskId</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><span class="hl-9">// Write preset to task-runner.json; npm scripts remain in package.json.</span>
 </code><button type="button">Copy</button></pre>
@@ -129,9 +139,13 @@ of one.
 <code>defaults.concurrency</code> or <code>--concurrency N</code> sets a positive integer limit.
 Non-empty <code>CI</code>, <code>defaults.ci</code>, or <code>--ci</code> defaults to sequential commands and
 streams output; configured or CLI concurrency takes precedence.</li>
-<li>On failure, stop admission, block dependents, cancel owned active processes,
-and wait for cleanup. Windows cancellation terminates the owned tree;
-POSIX cancellation escalates from SIGTERM to SIGKILL.</li>
+<li>By default, a command failure stops admission, blocks dependents, cancels
+active processes, and waits for cleanup. Set <code>defaults.keepGoing: true</code>, use
+<code>--keep-going</code>, or call <code>runTasks</code> with <code>keepGoing: true</code> to continue
+independent work; dependents of failed tasks remain blocked. Use
+<code>--no-keep-going</code> to restore fail-fast behavior when the config enables it.
+Windows cancellation terminates the owned tree; POSIX cancellation escalates
+from SIGTERM to SIGKILL.</li>
 <li>Interactive terminals show nested groups with animated running tasks,
 durations, readable package labels, and distinct waiting/ready/success/failure/
 blocked/cancelled states. Unstarted and successful groups collapse by
@@ -219,7 +233,8 @@ For local setup and pull request guidance, see
 <li><a href="#configuration"><span>Configuration</span></a></li>
 <li>
 <ul>
-<li><a href="#persistent-successful-result-cache"><span>Persistent successful-<wbr/>result cache</span></a></li></ul></li>
+<li><a href="#persistent-successful-result-cache"><span>Persistent successful-<wbr/>result cache</span></a></li>
+<li><a href="#previous-run-failed-tasks"><span>Previous-<wbr/>run failed tasks</span></a></li></ul></li>
 <li><a href="#library-and-presets"><span>Library and presets</span></a></li>
 <li><a href="#runtime-behavior"><span>Runtime behavior</span></a></li></ul></div></details></div>
 <div class="site-menu">
