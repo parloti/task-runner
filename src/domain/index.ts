@@ -1,3 +1,9 @@
+export type {
+  CancellationDetails,
+  CommandDiagnostics,
+  HostResourceSample,
+  HostResourceUsage,
+} from "./diagnostics";
 export {
   CommandFailedError,
   normalizeExecutionError,

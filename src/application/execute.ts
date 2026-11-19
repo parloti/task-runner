@@ -1,4 +1,6 @@
 import type {
+  CancellationDetails,
+  CommandDiagnostics,
   CompiledTask,
   ExecuteCommand,
   RunResult,
@@ -41,7 +43,14 @@ export async function executeGraph(
     throw new Error("Concurrency must be a positive integer");
   }
   const controller = new AbortController();
+  let cancellation: CancellationDetails | undefined;
   const cancel = (): void => {
+    cancellation ??= {
+      kind: "external",
+      ...(options.signal?.reason instanceof Error && {
+        reason: options.signal.reason.message,
+      }),
+    };
     controller.abort(options.signal?.reason);
   };
   if (options.signal?.aborted) cancel();
@@ -74,6 +83,7 @@ export async function executeGraph(
     status: TaskStatus,
     durationMs?: number,
     error?: Error,
+    command?: CommandDiagnostics,
   ): void => {
     states.set(task.id, status);
     if (status === "succeeded")
@@ -87,6 +97,9 @@ export async function executeGraph(
         cachedAt !== undefined && { completedAt: cachedAt, durationMs: 0 }),
       ...(durationMs !== undefined && { durationMs }),
       ...(error !== undefined && { error }),
+      ...(command !== undefined && { command }),
+      ...(status === "cancelled" &&
+        cancellation !== undefined && { cancellation }),
     });
   };
   for (const task of graph.values()) states.set(task.id, "pending");
@@ -96,21 +109,32 @@ export async function executeGraph(
     transition(task, "running");
     const started = Date.now();
     const execution = Promise.try(async () => {
+      let command: CommandDiagnostics | undefined;
       try {
-        await execute(task, controller.signal);
-        transition(task, "succeeded", Date.now() - started);
+        await execute(task, controller.signal, (diagnostics) => {
+          command = diagnostics;
+        });
+        transition(task, "succeeded", Date.now() - started, undefined, command);
       } catch (error) {
         const failure = normalizeExecutionError(error);
         const interrupted = controller.signal.aborted;
         const cancelled = failure instanceof TaskCancelledError;
         if (!cancelled) errors.push(failure);
         const abortSiblings = !options.keepGoing || interrupted || cancelled;
-        if (abortSiblings) controller.abort(failure);
+        if (abortSiblings) {
+          cancellation ??= {
+            kind: cancelled ? "executor" : "task-failed",
+            reason: failure.message,
+            taskId: task.id,
+          };
+          controller.abort(failure);
+        }
         transition(
           task,
           interrupted || cancelled ? "cancelled" : "failed",
           Date.now() - started,
           cancelled ? undefined : failure,
+          command,
         );
       } finally {
         active.delete(task.id);

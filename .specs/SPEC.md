@@ -113,6 +113,29 @@
 ## Diagnostics
 
 - Scheduler events identify task, package, status, and terminal duration/error.
+- Terminal events for started commands include structured process diagnostics:
+  the owned process ID when available, start/exit/stream-close timestamps,
+  observed exit code or signal, process error code, relative output-log path,
+  and whether the runner requested termination for cancellation or cleanup.
+  Exit and stream closure are separate observations; wrappers can hide failures
+  in their descendants. A nonzero exit or signal alone never establishes an
+  assertion failure, external kill, resource exhaustion, or retry safety.
+- Cancelled events identify external cancellation, executor cancellation, or
+  the task whose failure triggered fail-fast cancellation. Expected cancellation
+  remains free of error diagnostics.
+- Command diagnostics sample host-wide CPU utilization and free physical memory
+  at startup, every second while the command is active, and at completion.
+  They retain at most 10 recent samples, sample count, peak sampled CPU
+  utilization, minimum sampled free memory, and total physical memory.
+  CPU utilization is calculated between samples across all logical CPUs.
+  These measurements concern the entire host, not a task or its descendants,
+  and indicate correlation, never a proven failure cause. Sampling failures
+  are recorded explicitly without replacing the command outcome.
+- JSONL events include runner PID, Node version, platform, architecture, and
+  effective concurrency. Error messages remain readable strings; an additional
+  bounded structured error includes names, codes, causes, and aggregate errors.
+  Diagnostics never parse command output, infer tools, inspect report formats,
+  or collect environment values, command arguments, or process memory dumps.
 - Command logs use
   `logs/task-runner/<timestamp>-<full-task-name>-<pid>.log`. Full names include
   workspace and readable task names, with filesystem-safe normalization and

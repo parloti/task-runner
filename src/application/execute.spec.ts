@@ -236,20 +236,22 @@ describe("execution", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(cleanedUp).toBe(true);
-      expect(
-        events.some(
-          (event) =>
-            event.status === "cancelled" &&
-            (expectedCancellation
-              ? event.error === undefined
-              : event.error instanceof Error),
-        ),
-      ).toBe(true);
+      const terminal = events.find(
+        (event) => event.taskId === "b" && event.status === "cancelled",
+      );
+      expect(terminal?.error).toEqual(
+        expectedCancellation ? undefined : new Error("sibling cleanup failed"),
+      );
       expect(result.errors).toHaveLength(expectedCancellation ? 1 : 2);
+      expect(terminal).toHaveProperty("cancellation", {
+        kind: "task-failed",
+        reason: "original failure",
+        taskId: "a",
+      });
     },
   );
 
-  it("records executor cancellation without a diagnostic even before a signal is aborted", async () => {
+  it("records executor cancellation without an error diagnostic before the signal is aborted", async () => {
     // Arrange
     const events: TaskEvent[] = [];
     // Act
@@ -264,13 +266,14 @@ describe("execution", () => {
       },
     );
     // Assert
-    expect(result.success).toBe(false);
     expect(result.errors).toEqual([]);
-    expect(
-      events.find(
-        (event) => event.taskId === "shared" && event.status === "cancelled",
-      ),
-    ).not.toHaveProperty("error");
+    const cancellation = events.find((event) => event.status === "cancelled");
+    expect(cancellation).not.toHaveProperty("error");
+    expect(cancellation).toHaveProperty("cancellation", {
+      kind: "executor",
+      reason: "Cancelled task: shared",
+      taskId: "shared",
+    });
   });
 
   it("rejects an inconsistent externally supplied graph instead of hanging", async () => {

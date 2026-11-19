@@ -48,6 +48,13 @@
   prioritizes them with their selected prerequisites.
   Globby performs dot-inclusive discovery behind the fingerprint adapter.
 - Process adapters implement npm/shell execution, tree termination, and streams.
+- The executor's optional diagnostics callback supplies observed process
+  lifecycle evidence and bounded host resource samples to the scheduler.
+  Infrastructure owns sampling and process observations; application owns
+  cancellation origins and attaches diagnostics to terminal task events.
+  Bootstrap adds runner context and bounded structured error serialization
+  to JSONL without changing the existing readable error message.
+  No adapter identifies tools or interprets their output or report formats.
 - Domain execution errors distinguish expected command failure/cancellation.
   The CLI prints concise command failures; cancellation retains status without
   error diagnostics. Infrastructure owns safe timestamp/task/PID log paths;

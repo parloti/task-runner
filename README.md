@@ -278,6 +278,29 @@ errors; they never set process exit status or install global signal handlers.
   Structured events remain in separate `events-<run-id>.jsonl` files per invocation.
   Command output may contain sensitive tool output; treat retained logs accordingly.
 
+### Diagnosing command failures
+
+Terminal JSONL events and library `onEvent` callbacks include `command`
+diagnostics for started commands: PID, observed exit code/signal, separate
+process-exit and output-close timestamps, log path, and runner-requested
+termination. Cancelled events include `cancellation.kind` and the initiating
+`taskId` when another task failed. JSONL also preserves runner context and
+structured `errorDetails`, including error codes, causes, and cleanup failures;
+the existing `error` field remains a readable message.
+
+`command.host` samples host-wide CPU utilization and free physical memory
+every second, with at most 10 recent samples and lifetime pressure peaks.
+Sampling errors appear in `command.host.error`. These are host measurements,
+not per-task or process-tree measurements. High CPU usage, low memory, a signal,
+or a nonzero exit is evidence, not proof of why a command failed.
+An npm or shell wrapper can hide the exit details of its descendants.
+The runner does not identify tools, parse output, or distinguish assertions
+from tool crashes when both produce the same exit code.
+
+Custom `ExecuteCommand` implementations may use the optional third callback
+to provide `CommandDiagnostics` before settling; existing two-argument
+executors continue to work.
+
 See the [behavior specification](https://github.com/parloti/task-runner/blob/main/.specs/SPEC.md)
 and [architecture guide](https://github.com/parloti/task-runner/blob/main/.specs/ARCHITECTURE.md).
 For local setup and pull request guidance, see

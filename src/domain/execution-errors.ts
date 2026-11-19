@@ -1,11 +1,12 @@
 export class CommandFailedError extends Error {
   constructor(
     task: string,
-    code: null | number,
+    readonly code: null | number,
     readonly logPath?: string,
+    readonly signal?: string,
   ) {
     super(
-      `Command failed (${String(code)}): ${task}${logPath === undefined ? "" : `\nLog: ${logPath}`}`,
+      `Command failed (${signal ?? String(code)}): ${task}${logPath === undefined ? "" : `\nLog: ${logPath}`}`,
     );
   }
 }

@@ -5,7 +5,7 @@ import path from "node:path";
 import { make } from "ts-brand";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CompiledTask, TaskId } from "../domain";
+import type { CommandDiagnostics, CompiledTask, TaskId } from "../domain";
 
 import { mockSpawn, registerProcessTerminationTests } from "./__tests__";
 import { createProcessExecutor } from "./process";
@@ -48,7 +48,9 @@ describe("process boundary", () => {
         })
         .mockReturnValueOnce(child);
       const executor = createProcessExecutor(directory, directory, false);
-      queueMicrotask(() => child.emit("close", child.exitCode));
+      queueMicrotask(() =>
+        child.emit("close", child.exitCode, child.signalCode),
+      );
       try {
         // Act & Assert
         await expect(
@@ -172,6 +174,7 @@ describe("process boundary", () => {
     async (ci) => {
       const directory = mkdtempSync(path.join(os.tmpdir(), "runner-process-"));
       const executor = createProcessExecutor(directory, directory, ci);
+      const diagnostics = vi.fn<(evidence: CommandDiagnostics) => void>();
       vi.mocked(spawn).mockImplementationOnce(() => {
         const child = new ChildProcess();
         const error = Object.assign(new Error("spawn node ENOENT"), {
@@ -189,8 +192,10 @@ describe("process boundary", () => {
           executor(
             { ...task, package: "absent" },
             new AbortController().signal,
+            diagnostics,
           ),
         ).rejects.toThrow("ENOENT");
+        expect(diagnostics.mock.calls[0]?.[0].errorCode).toBe("ENOENT");
       } finally {
         rmSync(directory, { force: true, recursive: true });
       }

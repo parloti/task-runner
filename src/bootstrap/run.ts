@@ -17,6 +17,7 @@ import {
   findPackage,
   parseConfiguration,
 } from "../infrastructure";
+import { serializeEventError } from "./event-error";
 import { prepareRunLogDirectory } from "./run-logs";
 
 /**
@@ -70,9 +71,19 @@ export async function runTasks(
       path.join(directory, `events-${runId}.jsonl`),
       `${JSON.stringify({
         runId,
+        runner: {
+          arch: process.arch,
+          concurrency,
+          nodeVersion: process.version,
+          pid: process.pid,
+          platform: process.platform,
+        },
         timestamp: new Date().toISOString(),
         ...event,
-        ...(event.error !== undefined && { error: event.error.message }),
+        ...(event.error !== undefined && {
+          error: event.error.message,
+          errorDetails: serializeEventError(event.error),
+        }),
       })}\n`,
     );
     options.onEvent?.(event);

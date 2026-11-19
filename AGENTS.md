@@ -35,6 +35,9 @@
   and keep plain output free of ANSI styling.
 - Validate the complete graph before command side effects. Cancel only owned
   process trees, await cleanup, and preserve original errors and failed logs.
+- Keep failure diagnostics tool-agnostic: record process evidence and host
+  resource context without parsing tool output or treating exit codes, signals,
+  or resource pressure as proof of the underlying cause.
 - `npm test` runs tests. `npm run validate` is the full gate. Releases publish
   `@codeperfect/task-runner` through semantic-release on `main`; never publish
   manually. Keep the `task-runner` bin and keep pack archives out of `files`.

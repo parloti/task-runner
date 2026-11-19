@@ -11,6 +11,7 @@ import {
   qualifiedTaskName,
   TaskCancelledError,
 } from "../domain";
+import { ProcessDiagnostics } from "./process-diagnostics";
 import { taskLogPath } from "./task-log";
 
 /**
@@ -28,7 +29,7 @@ export function createProcessExecutor(
   ci: boolean,
   packagePaths: readonly string[] = [],
 ): ExecuteCommand {
-  return async (task, signal) => {
+  return async (task, signal, onDiagnostics) => {
     const label = stripVTControlCharacters(
       qualifiedTaskName(task, packagePaths),
     ).replaceAll(/[\p{Cc}\p{Cf}]/gu, " ");
@@ -47,69 +48,85 @@ export function createProcessExecutor(
           ]
         : [];
     const logPath = taskLogPath(runDirectory, task);
-    const child = spawn(file, args, {
-      cwd: path.resolve(root, task.package),
-      detached: process.platform !== "win32",
-      shell: command.kind === "shell",
-      stdio: ["ignore", ci ? "inherit" : "pipe", ci ? "inherit" : "pipe"],
-      windowsHide: true,
-    });
-    const log = ci ? undefined : createWriteStream(logPath, { flags: "wx" });
-    let termination: Promise<void> | undefined;
-    const terminationFailure = Promise.withResolvers<never>();
-    const cancel = (): void => {
-      termination ??= terminate(child);
-      void termination.catch(() => {
-        terminationFailure.reject(new TaskCancelledError(label));
-      });
-    };
-    signal.addEventListener("abort", cancel, { once: true });
-    const closed = new Promise<null | number>((resolve, reject) => {
-      child.once("error", reject);
-      child.once("close", (code) => {
-        log?.end();
-        resolve(code);
-      });
-    });
-    if (log !== undefined) {
-      child.stdout?.pipe(log, { end: false });
-      child.stderr?.pipe(log, { end: false });
-    }
-    const streamDone = log === undefined ? Promise.resolve() : finished(log);
+    const diagnostics = new ProcessDiagnostics(
+      ci ? undefined : path.relative(root, logPath),
+    );
     try {
-      const [code] = await Promise.race([
-        Promise.all([closed, streamDone]),
-        terminationFailure.promise,
-      ]);
-      if (isAborted(signal)) throw new TaskCancelledError(label);
-      if (code !== 0)
-        throw new CommandFailedError(
-          label,
-          code,
-          ci ? undefined : path.relative(root, logPath),
+      const child = spawn(file, args, {
+        cwd: path.resolve(root, task.package),
+        detached: process.platform !== "win32",
+        shell: command.kind === "shell",
+        stdio: ["ignore", ci ? "inherit" : "pipe", ci ? "inherit" : "pipe"],
+        windowsHide: true,
+      });
+      diagnostics.observe(child);
+      const log = ci ? undefined : createWriteStream(logPath, { flags: "wx" });
+      let termination: Promise<void> | undefined;
+      const terminationFailure = Promise.withResolvers<never>();
+      const cancel = (): void => {
+        diagnostics.requestTermination(
+          signal.aborted ? "cancellation" : "cleanup",
         );
-      if (!ci) rmSync(logPath);
-    } catch (error) {
-      cancel();
-      log?.destroy();
-      try {
-        await termination;
-      } catch (cleanupError) {
-        child.stdout?.destroy();
-        child.stderr?.destroy();
-        child.unref();
-        await Promise.allSettled([streamDone]);
-        throw new AggregateError(
-          [error, cleanupError],
-          `Task and cleanup failed: ${task.id}`,
-          { cause: cleanupError },
-        );
+        termination ??= terminate(child);
+        void termination.catch(() => {
+          terminationFailure.reject(new TaskCancelledError(label));
+        });
+      };
+      signal.addEventListener("abort", cancel, { once: true });
+      type ProcessExit = Pick<ChildProcess, "exitCode" | "signalCode">;
+      const closed = new Promise<ProcessExit>((resolve, reject) => {
+        child.once("error", reject);
+        child.once("close", (code, exitSignal) => {
+          log?.end();
+          resolve({ exitCode: code, signalCode: exitSignal });
+        });
+      });
+      if (log !== undefined) {
+        child.stdout?.pipe(log, { end: false });
+        child.stderr?.pipe(log, { end: false });
       }
-      await Promise.allSettled([closed, streamDone]);
-      if (!ci && error instanceof TaskCancelledError) rmSync(logPath);
+      const streamDone = log === undefined ? Promise.resolve() : finished(log);
+      try {
+        const [{ exitCode: code, signalCode: exitSignal }] = await Promise.race(
+          [Promise.all([closed, streamDone]), terminationFailure.promise],
+        );
+        if (isAborted(signal)) throw new TaskCancelledError(label);
+        if (code !== 0)
+          throw new CommandFailedError(
+            label,
+            code,
+            ci ? undefined : path.relative(root, logPath),
+            exitSignal ?? undefined,
+          );
+        if (!ci) rmSync(logPath);
+      } catch (error) {
+        cancel();
+        log?.destroy();
+        try {
+          await termination;
+        } catch (cleanupError) {
+          child.stdout?.destroy();
+          child.stderr?.destroy();
+          child.unref();
+          await Promise.allSettled([streamDone]);
+          throw new AggregateError(
+            [error, cleanupError],
+            `Task and cleanup failed: ${task.id}`,
+            { cause: cleanupError },
+          );
+        }
+        await Promise.allSettled([closed, streamDone]);
+        if (!ci && error instanceof TaskCancelledError) rmSync(logPath);
+        throw error;
+      } finally {
+        signal.removeEventListener("abort", cancel);
+      }
+    } catch (error) {
+      diagnostics.recordError(error);
       throw error;
     } finally {
-      signal.removeEventListener("abort", cancel);
+      const evidence = diagnostics.finish();
+      onDiagnostics?.(evidence);
     }
   };
 }

@@ -128,6 +128,22 @@ describe("real runtime", () => {
       );
       expect(cancellation).toBeDefined();
       expect(cancellation).not.toHaveProperty("error");
+      expect(cancellation).toHaveProperty("cancellation.taskId", "failure");
+      expect(cancellation).toHaveProperty(
+        "command.terminationRequested.reason",
+        "cancellation",
+      );
+      const failure = events.find((event) => event["status"] === "failed");
+      expect(failure).toHaveProperty("command.exitCode", 7);
+      expect(failure).toHaveProperty("command.exitedAt", expect.any(String));
+      expect(failure).toHaveProperty("command.closedAt", expect.any(String));
+      expect(failure).toHaveProperty(
+        "command.host.minFreeMemoryBytes",
+        expect.any(Number),
+      );
+      expect(failure).toHaveProperty("command.host.samples", expect.any(Array));
+      expect(failure).toHaveProperty("errorDetails.code", 7);
+      expect(failure).toHaveProperty("runner.concurrency", 2);
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }

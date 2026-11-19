@@ -1,5 +1,7 @@
 import type { Brand } from "ts-brand";
 
+import type { CancellationDetails, CommandDiagnostics } from "./diagnostics";
+
 export interface CacheDefinition {
   readonly env?: readonly string[];
   readonly exclude?: readonly string[];
@@ -27,6 +29,7 @@ export interface CompiledTask {
 export type ExecuteCommand = (
   task: CompiledTask,
   signal: AbortSignal,
+  onDiagnostics?: (diagnostics: CommandDiagnostics) => void,
 ) => Promise<void>;
 
 export interface RunnerConfig {
@@ -62,6 +65,8 @@ export interface TaskDefinition {
 
 export interface TaskEvent {
   readonly cacheReason?: string;
+  readonly cancellation?: CancellationDetails;
+  readonly command?: CommandDiagnostics;
   readonly completedAt?: string;
   readonly durationMs?: number;
   readonly error?: Error;
