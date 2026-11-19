@@ -207,6 +207,25 @@ timestamp in ISO 8601 UTC format (<code>| Finished at: &lt;timestamp&gt;</code>)
 Structured events remain in separate <code>events-&lt;run-id&gt;.jsonl</code> files per invocation.
 Command output may contain sensitive tool output; treat retained logs accordingly.</li>
 </ul>
+<h3 id="diagnosing-command-failures" class="tsd-anchor-link">Diagnosing command failures<a href="#diagnosing-command-failures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Terminal JSONL events and library <code>onEvent</code> callbacks include <code>command</code>
+diagnostics for started commands: PID, observed exit code/signal, separate
+process-exit and output-close timestamps, log path, and runner-requested
+termination. Cancelled events include <code>cancellation.kind</code> and the initiating
+<code>taskId</code> when another task failed. JSONL also preserves runner context and
+structured <code>errorDetails</code>, including error codes, causes, and cleanup failures;
+the existing <code>error</code> field remains a readable message.</p>
+<p><code>command.host</code> samples host-wide CPU utilization and free physical memory
+every second, with at most 10 recent samples and lifetime pressure peaks.
+Sampling errors appear in <code>command.host.error</code>. These are host measurements,
+not per-task or process-tree measurements. High CPU usage, low memory, a signal,
+or a nonzero exit is evidence, not proof of why a command failed.
+An npm or shell wrapper can hide the exit details of its descendants.
+The runner does not identify tools, parse output, or distinguish assertions
+from tool crashes when both produce the same exit code.</p>
+<p>Custom <code>ExecuteCommand</code> implementations may use the optional third callback
+to provide <code>CommandDiagnostics</code> before settling; existing two-argument
+executors continue to work.</p>
 <p>See the <a href="https://github.com/parloti/task-runner/blob/main/.specs/SPEC.md">behavior specification</a>
 and <a href="https://github.com/parloti/task-runner/blob/main/.specs/ARCHITECTURE.md">architecture guide</a>.
 For local setup and pull request guidance, see
@@ -236,7 +255,10 @@ For local setup and pull request guidance, see
 <li><a href="#persistent-successful-result-cache"><span>Persistent successful-<wbr/>result cache</span></a></li>
 <li><a href="#previous-run-failed-tasks"><span>Previous-<wbr/>run failed tasks</span></a></li></ul></li>
 <li><a href="#library-and-presets"><span>Library and presets</span></a></li>
-<li><a href="#runtime-behavior"><span>Runtime behavior</span></a></li></ul></div></details></div>
+<li><a href="#runtime-behavior"><span>Runtime behavior</span></a></li>
+<li>
+<ul>
+<li><a href="#diagnosing-command-failures"><span>Diagnosing command failures</span></a></li></ul></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="modules.html">@codeperfect/task-runner</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">

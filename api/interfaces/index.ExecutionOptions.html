@@ -13,7 +13,7 @@
 <h1>Interface ExecutionOptions</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ExecutionOptions</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#cache">cache</a><span class="tsd-signature-symbol">?:</span> <a href="index.ExecutionCache.html" class="tsd-signature-type tsd-kind-interface">ExecutionCache</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#concurrency">concurrency</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#forceruntasks">forceRunTasks</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/index.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#keepgoing">keepGoing</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#onevent">onEvent</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="index.TaskEvent.html" class="tsd-signature-type tsd-kind-interface">TaskEvent</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#prioritytasks">priorityTasks</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/index.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#signal">signal</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">AbortSignal</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L17">src/application/execute.ts:17</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L19">src/application/execute.ts:19</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -36,37 +36,37 @@
 <h3 class="tsd-anchor-link" id="cache"><code class="tsd-tag">Optional</code> <code class="tsd-tag">Readonly</code><span>cache</span><a href="#cache" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">cache</span><span class="tsd-signature-symbol">?:</span> <a href="index.ExecutionCache.html" class="tsd-signature-type tsd-kind-interface">ExecutionCache</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L18">src/application/execute.ts:18</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L20">src/application/execute.ts:20</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="concurrency"><code class="tsd-tag">Readonly</code><span>concurrency</span><a href="#concurrency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">concurrency</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L19">src/application/execute.ts:19</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L21">src/application/execute.ts:21</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="forceruntasks"><code class="tsd-tag">Optional</code> <code class="tsd-tag">Readonly</code><span>force<wbr/>Run<wbr/>Tasks</span><a href="#forceruntasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">forceRunTasks</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/index.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L20">src/application/execute.ts:20</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L22">src/application/execute.ts:22</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="keepgoing"><code class="tsd-tag">Optional</code> <code class="tsd-tag">Readonly</code><span>keep<wbr/>Going</span><a href="#keepgoing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">keepGoing</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L21">src/application/execute.ts:21</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L23">src/application/execute.ts:23</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="onevent"><code class="tsd-tag">Optional</code> <code class="tsd-tag">Readonly</code><span>on<wbr/>Event</span><a href="#onevent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">onEvent</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="index.TaskEvent.html" class="tsd-signature-type tsd-kind-interface">TaskEvent</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">void</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L22">src/application/execute.ts:22</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L24">src/application/execute.ts:24</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="prioritytasks"><code class="tsd-tag">Optional</code> <code class="tsd-tag">Readonly</code><span>priority<wbr/>Tasks</span><a href="#prioritytasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">priorityTasks</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/index.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L23">src/application/execute.ts:23</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L25">src/application/execute.ts:25</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="signal"><code class="tsd-tag">Optional</code> <code class="tsd-tag">Readonly</code><span>signal</span><a href="#signal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">signal</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">AbortSignal</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/parloti/task-runner/blob/e1b8660baf25d949db4758f7ce061419be5d3fb6/src/application/execute.ts#L24">src/application/execute.ts:24</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/parloti/task-runner/blob/f50645769fc9a04e3dbe30a8dca9e7e93095c90b/src/application/execute.ts#L26">src/application/execute.ts:26</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
