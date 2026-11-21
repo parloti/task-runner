@@ -16,21 +16,27 @@ export interface ExecutionCache {
   ): Promise<string | undefined>;
 }
 
+interface PrepareCachedTasksOptions {
+  readonly forceRunTasks?: ReadonlySet<TaskId>;
+  readonly onEvent?: (event: TaskEvent) => void;
+}
+
 /**
  * Look up outer groups first so a full cache hit needs only one snapshot.
  * @param graph Selected, validated task graph.
  * @param cache Successful-result persistence adapter.
- * @param onEvent Observer for cache-miss diagnostics.
- * @param forceRunTasks Task IDs that must execute rather than use cached results.
+ * @param options Cache lookup controls.
+ * @param options.forceRunTasks Task IDs that must execute rather than use cached results.
+ * @param options.onEvent Observer for cache-miss diagnostics.
  * @returns Reusable task identities with their prior success timestamps.
  * @example `prepareCachedTasks(graph, cache)` checks groups before individual commands.
  */
 export async function prepareCachedTasks(
   graph: ReadonlyMap<TaskId, CompiledTask>,
   cache: ExecutionCache,
-  onEvent?: (event: TaskEvent) => void,
-  forceRunTasks: ReadonlySet<TaskId> = new Set<TaskId>(),
+  options: PrepareCachedTasksOptions = {},
 ): Promise<ReadonlyMap<TaskId, string>> {
+  const { forceRunTasks = new Set<TaskId>(), onEvent } = options;
   const cached = new Map<TaskId, string>();
   const scopes = graph
     .values()

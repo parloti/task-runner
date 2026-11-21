@@ -11,9 +11,9 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import type { RunnerConfig } from "../../src";
+import type { RunnerConfig } from "#root";
 
-import { runTasks } from "../../src";
+import { runTasks } from "#root";
 
 /**
  * Create a temporary package fixture for runtime integration scenarios.

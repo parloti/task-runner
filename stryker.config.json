@@ -20,6 +20,6 @@
   "incremental": true,
   "reporters": ["progress", "clear-text", "json"],
   "testRunner": "vitest",
-  "thresholds": { "break": 20, "high": 80, "low": 60 },
+  "thresholds": { "break": 25, "high": 80, "low": 60 },
   "tsconfigFile": "tsconfig.app.json"
 }

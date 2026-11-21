@@ -9,7 +9,7 @@ const config = defineConfig({
       exclude: ["**/*.spec.ts"],
       include: ["src/**/*.ts"],
       reportsDirectory: "coverage/e2e",
-      thresholds: { branches: 20, functions: 20, lines: 20, statements: 20 },
+      thresholds: { branches: 25, functions: 25, lines: 25, statements: 25 },
     },
     fsModuleCachePath: "node_modules/.vitest-cache/e2e",
     include: ["tests/e2e/**/*.e2e.ts"],

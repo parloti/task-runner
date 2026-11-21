@@ -26,6 +26,12 @@ export interface ExecutionOptions {
   readonly signal?: AbortSignal;
 }
 
+interface TransitionDetails {
+  readonly command?: CommandDiagnostics;
+  readonly durationMs?: number;
+  readonly error?: Error;
+}
+
 /**
  * Execute a validated task graph with bounded command concurrency.
  * @param graph Validated tasks keyed by canonical task ID.
@@ -81,9 +87,7 @@ export async function executeGraph(
   const transition = (
     task: CompiledTask,
     status: TaskStatus,
-    durationMs?: number,
-    error?: Error,
-    command?: CommandDiagnostics,
+    details: TransitionDetails = {},
   ): void => {
     states.set(task.id, status);
     if (status === "succeeded")
@@ -95,9 +99,11 @@ export async function executeGraph(
       taskId: task.id,
       ...(status === "cached" &&
         cachedAt !== undefined && { completedAt: cachedAt, durationMs: 0 }),
-      ...(durationMs !== undefined && { durationMs }),
-      ...(error !== undefined && { error }),
-      ...(command !== undefined && { command }),
+      ...(details.durationMs !== undefined && {
+        durationMs: details.durationMs,
+      }),
+      ...(details.error !== undefined && { error: details.error }),
+      ...(details.command !== undefined && { command: details.command }),
       ...(status === "cancelled" &&
         cancellation !== undefined && { cancellation }),
     });
@@ -114,7 +120,10 @@ export async function executeGraph(
         await execute(task, controller.signal, (diagnostics) => {
           command = diagnostics;
         });
-        transition(task, "succeeded", Date.now() - started, undefined, command);
+        transition(task, "succeeded", {
+          ...(command !== undefined && { command }),
+          durationMs: Date.now() - started,
+        });
       } catch (error) {
         const failure = normalizeExecutionError(error);
         const interrupted = controller.signal.aborted;
@@ -129,13 +138,11 @@ export async function executeGraph(
           };
           controller.abort(failure);
         }
-        transition(
-          task,
-          interrupted || cancelled ? "cancelled" : "failed",
-          Date.now() - started,
-          cancelled ? undefined : failure,
-          command,
-        );
+        transition(task, interrupted || cancelled ? "cancelled" : "failed", {
+          ...(command !== undefined && { command }),
+          durationMs: Date.now() - started,
+          ...(!cancelled && { error: failure }),
+        });
       } finally {
         active.delete(task.id);
       }
@@ -144,12 +151,10 @@ export async function executeGraph(
   };
   try {
     if (options.cache !== undefined && !controller.signal.aborted)
-      cached = await prepareCachedTasks(
-        graph,
-        options.cache,
-        options.onEvent,
+      cached = await prepareCachedTasks(graph, options.cache, {
         forceRunTasks,
-      );
+        ...(options.onEvent !== undefined && { onEvent: options.onEvent }),
+      });
     while (
       states.values().some((state) => state === "pending") ||
       active.size > 0

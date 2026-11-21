@@ -9,9 +9,9 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type { RunnerConfig } from "../../src";
+import type { RunnerConfig } from "#root";
 
-import { runTasks } from "../../src";
+import { runTasks } from "#root";
 
 describe("runtime task selection", () => {
   it.each([

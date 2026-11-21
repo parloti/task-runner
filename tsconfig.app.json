@@ -5,7 +5,8 @@
     "declaration": true,
     "declarationMap": true,
     "inlineSourceMap": true,
-    "inlineSources": true
+    "inlineSources": true,
+    "paths": { "#root": ["./src/index.ts"] }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.spec.ts", "src/**/__tests__/**"]
