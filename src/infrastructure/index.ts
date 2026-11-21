@@ -1,3 +1,4 @@
+export { createAutoConcurrencyController } from "./auto-concurrency";
 export {
   findConfiguration,
   findPackage,

@@ -203,7 +203,11 @@ describe("executable CLI", () => {
       const config = path.join(directory, "task-runner.json");
       writeFileSync(
         config,
-        JSON.stringify({ packages: { ".": { check: {} } }, version: 2 }),
+        JSON.stringify({
+          defaults: { concurrency: 1 },
+          packages: { ".": { check: {} } },
+          version: 2,
+        }),
       );
       const descriptor = Object.getOwnPropertyDescriptor(
         process.stderr,

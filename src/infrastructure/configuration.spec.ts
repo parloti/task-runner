@@ -86,15 +86,15 @@ describe("configuration boundary", () => {
       value: { ...valid(), defaults: { scroll: 1 } },
     },
     {
-      error: "Concurrency must be a positive integer",
+      error: "Concurrency must be auto or a positive integer",
       value: { ...valid(), defaults: { concurrency: "2" } },
     },
     {
-      error: "Concurrency must be a positive integer",
+      error: "Concurrency must be auto or a positive integer",
       value: { ...valid(), defaults: { concurrency: 1.5 } },
     },
     {
-      error: "Concurrency must be a positive integer",
+      error: "Concurrency must be auto or a positive integer",
       value: { ...valid(), defaults: { concurrency: 0 } },
     },
     {
@@ -184,6 +184,7 @@ describe("configuration boundary", () => {
 
   it.each([
     { defaults: {}, expected: {} },
+    { defaults: { concurrency: "auto" }, expected: { concurrency: "auto" } },
     {
       defaults: {
         ci: false,

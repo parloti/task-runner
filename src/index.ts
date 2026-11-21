@@ -1,6 +1,7 @@
 export { executeGraph } from "./application";
 export type {
   CacheLookup,
+  ConcurrencyController,
   ExecutionCache,
   ExecutionOptions,
   RunOptions,
@@ -13,6 +14,7 @@ export type {
   Command,
   CommandDiagnostics,
   CompiledTask,
+  ConcurrencySetting,
   ExecuteCommand,
   HostResourceSample,
   HostResourceUsage,

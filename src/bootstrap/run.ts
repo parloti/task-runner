@@ -10,6 +10,7 @@ import type { RunResult, TaskEvent } from "../domain";
 import { executeGraph } from "../application";
 import { compileGraph, resolveTaskReference, taskReference } from "../domain";
 import {
+  createAutoConcurrencyController,
   createFailedTaskStore,
   createProcessExecutor,
   createTaskCache,
@@ -57,15 +58,25 @@ export async function runTasks(
   const packagePaths = Object.keys(config.packages);
   const ci =
     Boolean(process.env["CI"]) || (options.ci ?? config.defaults?.ci ?? false);
-  const concurrency =
-    options.concurrency ??
-    config.defaults?.concurrency ??
-    (ci ? 1 : Math.max(1, Math.floor(availableParallelism() / 2)));
-  if (!Number.isSafeInteger(concurrency) || concurrency < 1)
-    throw new Error("Concurrency must be a positive integer");
+  const concurrencySetting =
+    options.concurrency ?? config.defaults?.concurrency ?? (ci ? 1 : "auto");
+  if (
+    typeof concurrencySetting === "number" &&
+    (!Number.isSafeInteger(concurrencySetting) || concurrencySetting < 1)
+  )
+    throw new Error("Concurrency must be auto or a positive integer");
   options.onPlan?.(graph, target, packagePaths);
   const runId = randomUUID();
   const { directory, release } = await prepareRunLogDirectory(root, runId);
+  const autoConcurrency =
+    concurrencySetting === "auto"
+      ? createAutoConcurrencyController()
+      : undefined;
+  const concurrency =
+    typeof concurrencySetting === "number"
+      ? concurrencySetting
+      : (autoConcurrency?.maxConcurrency ??
+        Math.max(1, Math.floor(availableParallelism() / 2)));
   const onEvent = (event: TaskEvent): void => {
     appendFileSync(
       path.join(directory, `events-${runId}.jsonl`),
@@ -73,7 +84,7 @@ export async function runTasks(
         runId,
         runner: {
           arch: process.arch,
-          concurrency,
+          concurrency: autoConcurrency?.currentConcurrency ?? concurrency,
           nodeVersion: process.version,
           pid: process.pid,
           platform: process.platform,
@@ -102,6 +113,9 @@ export async function runTasks(
           options.noCache ?? config.defaults?.noCache,
         ),
         concurrency,
+        ...(autoConcurrency !== undefined && {
+          concurrencyController: autoConcurrency,
+        }),
         forceRunTasks: priorityTasks,
         keepGoing: options.keepGoing ?? config.defaults?.keepGoing ?? false,
         onEvent,
@@ -113,6 +127,8 @@ export async function runTasks(
   } catch (error) {
     executionFailed = true;
     executionError = error;
+  } finally {
+    autoConcurrency?.close();
   }
 
   if (!executionFailed && result !== undefined && completedAt !== undefined) {

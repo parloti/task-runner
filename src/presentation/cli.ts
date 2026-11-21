@@ -42,15 +42,19 @@ export function parseArguments(args: string[]): ParseArguments {
   const names = positionals[0] === "run" ? positionals.slice(1) : positionals;
   if (!values.help && (names.length !== 1 || !names[0]))
     throw new Error(
-      "Usage: task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n] [--keep-going|--no-keep-going] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
+      "Usage: task-runner run <entrypoint> [--config path] [--package path] [--ci] [--concurrency n|auto] [--keep-going|--no-keep-going] [--collapse true|false] [--max-tasks n] [--no-scroll] [--no-cache]",
     );
   const concurrency =
-    values.concurrency === undefined ? undefined : Number(values.concurrency);
+    values.concurrency === "auto"
+      ? "auto"
+      : values.concurrency === undefined
+        ? undefined
+        : Number(values.concurrency);
   if (
-    concurrency !== undefined &&
+    typeof concurrency === "number" &&
     (!Number.isSafeInteger(concurrency) || concurrency < 1)
   )
-    throw new Error("Concurrency must be a positive integer");
+    throw new Error("Concurrency must be auto or a positive integer");
   if (
     values.collapse !== undefined &&
     values.collapse !== "true" &&

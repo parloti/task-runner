@@ -4,10 +4,15 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { executeGraph } from "../application";
+import { createAutoConcurrencyController } from "../infrastructure";
 import { runTasks } from "./run";
 import { prepareRunLogDirectory } from "./run-logs";
 
 vi.mock("../application", () => ({ executeGraph: vi.fn() }));
+vi.mock("../infrastructure", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../infrastructure")>()),
+  createAutoConcurrencyController: vi.fn(),
+}));
 vi.mock("./run-logs", () => ({ prepareRunLogDirectory: vi.fn() }));
 vi.mock("node:os", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:os")>()),
@@ -20,6 +25,25 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  vi.mocked(createAutoConcurrencyController).mockImplementation(() => {
+    const maxConcurrency = vi.mocked(availableParallelism)();
+    return {
+      close: vi.fn(),
+      currentConcurrency: 1,
+      maxConcurrency,
+      revision: 0,
+      waitForChange: (_revision, signal) =>
+        new Promise<void>((resolve) => {
+          signal?.addEventListener(
+            "abort",
+            () => {
+              resolve();
+            },
+            { once: true },
+          );
+        }),
+    };
+  });
   vi.mocked(prepareRunLogDirectory).mockImplementation((root) =>
     Promise.resolve({
       directory: path.join(root, "logs", "task-runner"),
@@ -30,8 +54,8 @@ beforeEach(() => {
 
 describe("runtime concurrency policy", () => {
   it.each([
-    { ci: false, cpus: 8, expected: 4, requested: undefined },
-    { ci: false, cpus: 5, expected: 2, requested: undefined },
+    { ci: false, cpus: 8, expected: 8, requested: undefined },
+    { ci: false, cpus: 5, expected: 5, requested: undefined },
     { ci: false, cpus: 1, expected: 1, requested: undefined },
     { ci: true, cpus: 8, expected: 1, requested: undefined },
     { ci: false, cpus: 8, expected: 3, requested: 3 },
@@ -103,7 +127,7 @@ describe("runtime concurrency policy", () => {
       },
       {
         defaults: { ci: true, keepGoing: true },
-        expected: 4,
+        expected: 8,
         expectedKeepGoing: false,
         options: { ci: false, keepGoing: false },
       },

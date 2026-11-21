@@ -71,6 +71,13 @@ over its configured default; otherwise built-in defaults apply. The `CI`
 environment variable still enables CI behavior, and an explicitly configured
 concurrency can override its sequential concurrency default.
 
+Concurrency accepts a positive integer for a fixed limit or `"auto"` for
+resource-aware scheduling. Local runs use `auto` when no concurrency is set;
+CI runs default to one command unless `auto` or a number is explicitly set.
+For example, use `"concurrency": "auto"` in `defaults` or run
+`task-runner run check --concurrency auto` to enable adaptive scheduling in CI.
+Library callers can use `runTasks("check", { concurrency: "auto" })`.
+
 Keep `compile` and `test` as ordinary npm scripts; add
 `"check": "task-runner run check"` to `package.json`. Task references are explicit,
 not inferred from shell text. Use `{ "kind": "shell", "command": "..." }` for an
@@ -205,11 +212,20 @@ errors; they never set process exit status or install global signal handlers.
   through npm and fail as task execution if missing; an optional npm script
   adds `--if-present` and succeeds when absent.
 - Execute shared tasks once per invocation, with one global leaf-command limit.
-- Default concurrency is half the available CPUs, rounded down, with a minimum
-  of one.
-  `defaults.concurrency` or `--concurrency N` sets a positive integer limit.
-  Non-empty `CI`, `defaults.ci`, or `--ci` defaults to sequential commands and
-  streams output; configured or CLI concurrency takes precedence.
+- Local runs default to adaptive concurrency. The scheduler starts with one
+  command slot, samples CPU and memory once per second, and adds one slot after
+  two healthy samples (CPU at or below 70% and memory headroom at or above
+  25%). CPU above the growth threshold pauses ramp-up. The runner removes one
+  slot when memory headroom is 15% or lower. Active commands finish normally
+  when the limit decreases. Auto mode is capped by available CPUs, including
+  Linux cgroup v1/v2 quota and CPU-set limits where detectable. Memory headroom
+  uses cgroup limits when available and host memory otherwise. If startup
+  resource sampling is unavailable, the runner falls back to half the available
+  CPUs, rounded down, with a minimum of one.
+- `defaults.concurrency` or `--concurrency N` sets a fixed positive integer
+  limit; `"auto"` selects adaptive scheduling. Non-empty `CI`, `defaults.ci`,
+  or `--ci` defaults to one command and streams output. An explicit CLI or
+  config concurrency setting takes precedence, including `auto` in CI.
 - By default, a command failure stops admission, blocks dependents, cancels
   active processes, and waits for cleanup. Set `defaults.keepGoing: true`, use
   `--keep-going`, or call `runTasks` with `keepGoing: true` to continue

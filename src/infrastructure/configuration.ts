@@ -191,7 +191,7 @@ function object(value: unknown, label: string): Record<string, unknown> {
  * Validate optional runtime and presentation defaults.
  * @param value Unknown defaults object from the configuration.
  * @returns Checked task-runner defaults.
- * @example `parseDefaults({ concurrency: 2 })` validates a concurrency default.
+ * @example `parseDefaults({ concurrency: "auto" })` validates an adaptive default.
  */
 function parseDefaults(value: unknown): RunnerDefaults {
   const input = object(value, "defaults");
@@ -221,13 +221,15 @@ function parseDefaults(value: unknown): RunnerDefaults {
     throw new TypeError("Expected boolean: defaults noCache");
   if (input["scroll"] !== undefined && typeof input["scroll"] !== "boolean")
     throw new TypeError("Expected boolean: defaults scroll");
+  const concurrency = input["concurrency"];
   if (
-    input["concurrency"] !== undefined &&
-    (typeof input["concurrency"] !== "number" ||
-      !Number.isSafeInteger(input["concurrency"]) ||
-      input["concurrency"] < 1)
+    concurrency !== undefined &&
+    concurrency !== "auto" &&
+    (typeof concurrency !== "number" ||
+      !Number.isSafeInteger(concurrency) ||
+      concurrency < 1)
   )
-    throw new Error("Concurrency must be a positive integer");
+    throw new Error("Concurrency must be auto or a positive integer");
   if (
     input["maxTasks"] !== undefined &&
     (typeof input["maxTasks"] !== "number" ||
@@ -237,7 +239,6 @@ function parseDefaults(value: unknown): RunnerDefaults {
     throw new Error("Max tasks must be a positive integer");
   const ci = input["ci"];
   const collapse = input["collapse"];
-  const concurrency = input["concurrency"];
   const keepGoing = input["keepGoing"];
   const maxTasks = input["maxTasks"];
   const noCache = input["noCache"];

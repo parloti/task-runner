@@ -18,6 +18,7 @@ export type {
   CacheDefinition,
   Command,
   CompiledTask,
+  ConcurrencySetting,
   ExecuteCommand,
   RunnerConfig,
   RunnerDefaults,

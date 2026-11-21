@@ -26,6 +26,8 @@ export interface CompiledTask {
   readonly run?: Command;
 }
 
+export type ConcurrencySetting = "auto" | number;
+
 export type ExecuteCommand = (
   task: CompiledTask,
   signal: AbortSignal,
@@ -44,7 +46,7 @@ export interface RunnerConfig {
 export interface RunnerDefaults {
   readonly ci?: boolean;
   readonly collapse?: boolean;
-  readonly concurrency?: number;
+  readonly concurrency?: ConcurrencySetting;
   readonly keepGoing?: boolean;
   readonly maxTasks?: number;
   readonly noCache?: boolean;

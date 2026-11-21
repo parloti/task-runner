@@ -18,9 +18,11 @@
         "ci": { "type": "boolean" },
         "collapse": { "type": "boolean" },
         "concurrency": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
+          "description": "A positive integer fixes the command limit; auto adjusts it to available CPU and memory resources.",
+          "anyOf": [
+            { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+            { "const": "auto" }
+          ]
         },
         "keepGoing": {
           "type": "boolean",

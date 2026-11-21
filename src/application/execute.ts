@@ -8,6 +8,7 @@ import type {
   TaskId,
   TaskStatus,
 } from "../domain";
+import type { ConcurrencyController } from "./concurrency";
 
 import { normalizeExecutionError, TaskCancelledError } from "../domain";
 import {
@@ -18,7 +19,9 @@ import {
 
 export interface ExecutionOptions {
   readonly cache?: ExecutionCache;
+  /** Fixed upper bound, also used as the cap for a dynamic controller. */
   readonly concurrency: number;
+  readonly concurrencyController?: ConcurrencyController;
   readonly forceRunTasks?: readonly TaskId[];
   readonly keepGoing?: boolean;
   readonly onEvent?: (event: TaskEvent) => void;
@@ -48,6 +51,14 @@ export async function executeGraph(
   if (!Number.isSafeInteger(options.concurrency) || options.concurrency < 1) {
     throw new Error("Concurrency must be a positive integer");
   }
+  const concurrencyLimit = (): number => {
+    const requested = options.concurrencyController?.currentConcurrency;
+    if (requested === undefined) return options.concurrency;
+    if (!Number.isSafeInteger(requested) || requested < 1)
+      throw new Error("Dynamic concurrency must be a positive integer");
+    return Math.min(options.concurrency, requested);
+  };
+  concurrencyLimit();
   const controller = new AbortController();
   let cancellation: CancellationDetails | undefined;
   const cancel = (): void => {
@@ -159,6 +170,7 @@ export async function executeGraph(
       states.values().some((state) => state === "pending") ||
       active.size > 0
     ) {
+      const concurrencyRevision = options.concurrencyController?.revision;
       let progressed = false;
       for (const task of orderedTasks) {
         if (states.get(task.id) !== "pending") continue;
@@ -183,14 +195,34 @@ export async function executeGraph(
             transition(task, "cached");
           } else if (task.run === undefined) {
             transition(task, "succeeded");
-          } else if (active.size < options.concurrency) {
+          } else if (active.size < concurrencyLimit()) {
             start(task);
           } else continue;
         } else continue;
         progressed = true;
       }
-      if (active.size > 0) await Promise.race(active.values());
-      else if (
+      if (active.size > 0) {
+        const activeExecution = Promise.race(active.values());
+        if (
+          concurrencyRevision === undefined ||
+          options.concurrencyController === undefined
+        ) {
+          await activeExecution;
+        } else {
+          const waitController = new AbortController();
+          try {
+            await Promise.race([
+              activeExecution,
+              options.concurrencyController.waitForChange(
+                concurrencyRevision,
+                waitController.signal,
+              ),
+            ]);
+          } finally {
+            waitController.abort();
+          }
+        }
+      } else if (
         !progressed &&
         states.values().some((state) => state === "pending")
       ) {

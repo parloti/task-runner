@@ -1,13 +1,13 @@
 # Architecture
 
-| Component            | Ownership                                                                                                | Dependencies                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `src/domain`         | Task/config/event contracts, graph compilation, readable task names, and optional preset construction    | `ts-brand`                            |
-| `src/application`    | Scheduler, executor/cache ports, cache-scope selection, and run options                                  | Domain                                |
-| `src/infrastructure` | Config parsing, processes, npm CLI discovery, file fingerprints, atomic records, and cross-process locks | Application, domain, and Node         |
-| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                                                     | Application, domain, Node, log-update |
-| `src/bootstrap`      | Runtime composition, logging, signals, executable                                                        | All layers                            |
-| `tests/e2e`          | Real subprocess and consumer behavior                                                                    | Public/runtime boundaries             |
+| Component            | Ownership                                                                                              | Dependencies                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `src/domain`         | Task/config/event contracts, graph compilation, readable task names, and optional preset construction  | `ts-brand`                            |
+| `src/application`    | Scheduler, executor/cache/concurrency ports, cache-scope selection, and run options                    | Domain                                |
+| `src/infrastructure` | Config parsing, processes, resource sampling, npm CLI discovery, file fingerprints, records, and locks | Application, domain, and Node         |
+| `src/presentation`   | CLI arguments, nested progress view, terminal redraw                                                   | Application, domain, Node, log-update |
+| `src/bootstrap`      | Runtime composition, logging, signals, executable                                                      | All layers                            |
+| `tests/e2e`          | Real subprocess and consumer behavior                                                                  | Public/runtime boundaries             |
 
 - Version-2 package-local JSON is validated at the IO boundary, including
   optional runner defaults. Bootstrap combines configured defaults with explicit
@@ -24,6 +24,9 @@
   After selection, command dependencies are retained only when their targets
   are selected. Groups explicitly list their members; aliases use the same rule.
 - A single scheduler admits ready leaf commands and owns cancellation/state.
+- The scheduler uses a concurrency-controller port to wake when an adaptive
+  command limit changes. Infrastructure samples host CPU/memory and Linux
+  cgroup v1/v2 limits; fixed numeric limits do not start the adaptive sampler.
 - The scheduler stops admission and cancels active work after failure by default;
   `keepGoing` leaves independent work eligible and blocks dependents of failed
   tasks.

@@ -18,7 +18,8 @@
   `keepGoing`, `maxTasks`, `noCache`, and `scroll`. Explicit CLI values take precedence over
   configured defaults; omitted values use built-in defaults. A non-empty `CI`
   environment variable continues to enable CI behavior. Configured or CLI
-  concurrency can override CI's sequential concurrency default.
+  concurrency can override CI's sequential concurrency default. Concurrency
+  accepts a positive integer or `"auto"`.
 - Tasks live in `packages[path][name]`, without task-level package fields
   or entrypoint mappings. Any local task is directly invocable. Bare dependency
   names resolve locally; `<package-path>#<task>` selects another package and
@@ -40,7 +41,7 @@
   scripts, tasks, or task groups belong to a project. It executes only commands
   declared in the config.
 - Preflight validates the complete configuration, references, cycles, and
-  positive integer concurrency before command side effects. It does not check
+  concurrency settings before command side effects. It does not check
   whether configured npm scripts exist.
 - Required npm scripts are attempted by npm and fail as task execution when
   absent. Optional npm tasks pass `--if-present` and succeed when the script is
@@ -48,10 +49,18 @@
 - Selected prerequisites must succeed before dependents start.
 - Each task identity executes once per run. Independent tasks can overlap up to
   the global leaf-command limit; dependency waits do not consume slots.
-- Default concurrency is `max(1, floor(availableParallelism() / 2))`.
-  A non-empty CI variable, `--ci`, or `defaults.ci` defaults to one active
-  command and streamed output. An explicit positive integer concurrency from
-  the CLI or `defaults` overrides either default.
+- Local runs default to `auto`; CI runs default to one command when concurrency
+  is omitted. Explicit CLI/config values, including `"auto"`, override the CI
+  limit. Numeric concurrency remains a fixed positive integer limit.
+- Auto concurrency starts at one command and is capped by the effective CPU
+  count. The scheduler samples resources once per second, raises the limit by
+  one after two samples with CPU at or below 70% and memory headroom at or above
+  25%. CPU above the growth threshold pauses ramp-up; the scheduler lowers the
+  limit by one when memory headroom is 15% or lower. It never cancels active
+  commands to meet a lower limit.
+- Auto mode uses Linux cgroup v1/v2 CPU quota and CPU-set limits and available
+  memory when detected; otherwise it uses host metrics. If resource sampling is
+  unavailable at startup, it falls back to the previous half-CPU default.
 - By default, a command failure stops admission, blocks dependent work, cancels
   active work, and awaits owned subprocess/stream cleanup. Failure context is
   preserved.
@@ -132,7 +141,8 @@
   and indicate correlation, never a proven failure cause. Sampling failures
   are recorded explicitly without replacing the command outcome.
 - JSONL events include runner PID, Node version, platform, architecture, and
-  effective concurrency. Error messages remain readable strings; an additional
+  the current effective concurrency limit. Auto-mode limits can change during
+  the run. Error messages remain readable strings; an additional
   bounded structured error includes names, codes, causes, and aggregate errors.
   Diagnostics never parse command output, infer tools, inspect report formats,
   or collect environment values, command arguments, or process memory dumps.

@@ -1,4 +1,9 @@
 export {
+  restoreTestPlatform,
+  setTestPlatform,
+  setupHost,
+} from "./auto-concurrency-host";
+export {
   cacheConfig,
   createCacheFixtureDirectory,
   executeCacheTask,

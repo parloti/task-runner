@@ -1,8 +1,13 @@
-import type { CompiledTask, TaskEvent, TaskId } from "../domain";
+import type {
+  CompiledTask,
+  ConcurrencySetting,
+  TaskEvent,
+  TaskId,
+} from "../domain";
 
 export interface RunOptions {
   readonly ci?: boolean;
-  readonly concurrency?: number;
+  readonly concurrency?: ConcurrencySetting;
   readonly config?: string;
   readonly cwd?: string;
   readonly keepGoing?: boolean;
