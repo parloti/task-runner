@@ -26,7 +26,7 @@
         },
         "keepGoing": {
           "type": "boolean",
-          "description": "Continue independent tasks after a command fails; tasks that depend on a failed task remain blocked."
+          "description": "Continue independent tasks after a command fails (the default); false stops admission and cancels active work. Tasks that depend on a failed task remain blocked."
         },
         "maxTasks": {
           "type": "integer",

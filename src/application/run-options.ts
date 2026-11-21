@@ -10,6 +10,7 @@ export interface RunOptions {
   readonly concurrency?: ConcurrencySetting;
   readonly config?: string;
   readonly cwd?: string;
+  /** Continue independent tasks after command failures; defaults to true. */
   readonly keepGoing?: boolean;
   readonly noCache?: boolean;
   readonly onEvent?: (event: TaskEvent) => void;

@@ -116,7 +116,7 @@ describe("runtime concurrency policy", () => {
       {
         defaults: { concurrency: 2 },
         expected: 4,
-        expectedKeepGoing: false,
+        expectedKeepGoing: true,
         options: { concurrency: 4 },
       },
       {

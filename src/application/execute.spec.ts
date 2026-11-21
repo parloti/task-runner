@@ -144,7 +144,7 @@ describe("execution", () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
         siblingWasAborted = signal.aborted;
       },
-      { concurrency: 2, keepGoing: true },
+      { concurrency: 2 },
     );
     expect(result.success).toBe(false);
     expect(calls).toEqual(["shared", "a", "b"]);
@@ -228,6 +228,7 @@ describe("execution", () => {
         },
         {
           concurrency: 2,
+          keepGoing: false,
           onEvent: (event) => {
             events.push(event);
           },

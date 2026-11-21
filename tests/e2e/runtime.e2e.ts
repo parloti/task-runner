@@ -88,6 +88,7 @@ describe("real runtime", () => {
       const result = await runTasks("check", {
         concurrency: 2,
         cwd: directory,
+        keepGoing: false,
       });
       // Assert
       expect(result.success).toBe(false);

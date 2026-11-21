@@ -61,15 +61,15 @@
 - Auto mode uses Linux cgroup v1/v2 CPU quota and CPU-set limits and available
   memory when detected; otherwise it uses host metrics. If resource sampling is
   unavailable at startup, it falls back to the previous half-CPU default.
-- By default, a command failure stops admission, blocks dependent work, cancels
-  active work, and awaits owned subprocess/stream cleanup. Failure context is
-  preserved.
-- `defaults.keepGoing`, `--keep-going`, or library option `keepGoing: true`
-  allows independent selected tasks to continue after a command fails.
+- By default, independent selected tasks continue after a command fails.
   Dependents of failed tasks become blocked. Active independent tasks are not
-  cancelled, and their subprocess/stream cleanup is awaited. An explicit
-  `--no-keep-going` or library option `keepGoing: false` restores fail-fast
-  behavior, taking precedence over the configured default.
+  cancelled, and their subprocess/stream cleanup is awaited. Failure context is
+  preserved.
+- `defaults.keepGoing`, `--keep-going`, and library option `keepGoing: true`
+  enable continuing independent tasks; this is the default. Set
+  `defaults.keepGoing: false`, pass `--no-keep-going`, or use library option
+  `keepGoing: false` to stop admission and cancel active work after a failure.
+  Explicit CLI/library values take precedence over the configured default.
 - Command tasks whose final state is `failed` are saved as candidates for the
   next runner invocation. The record is scoped to the selected config file.
   Still-configured candidates are added to that invocation's selected graph and

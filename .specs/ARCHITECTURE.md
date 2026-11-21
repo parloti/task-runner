@@ -27,9 +27,9 @@
 - The scheduler uses a concurrency-controller port to wake when an adaptive
   command limit changes. Infrastructure samples host CPU/memory and Linux
   cgroup v1/v2 limits; fixed numeric limits do not start the adaptive sampler.
-- The scheduler stops admission and cancels active work after failure by default;
-  `keepGoing` leaves independent work eligible and blocks dependents of failed
-  tasks.
+- Independent selected work remains eligible after failure by default;
+  `keepGoing: false` stops admission and cancels active work. Dependents of
+  failed tasks are blocked in either mode.
 - The validated plan can include prior failed command targets alongside the
   requested entrypoint. The scheduler gives those targets and their selected
   prerequisites queue priority without creating a second execution path.

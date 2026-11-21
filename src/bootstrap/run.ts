@@ -117,7 +117,7 @@ export async function runTasks(
           concurrencyController: autoConcurrency,
         }),
         forceRunTasks: priorityTasks,
-        keepGoing: options.keepGoing ?? config.defaults?.keepGoing ?? false,
+        keepGoing: options.keepGoing ?? config.defaults?.keepGoing ?? true,
         onEvent,
         priorityTasks,
         ...(options.signal !== undefined && { signal: options.signal }),

@@ -47,6 +47,7 @@ export interface RunnerDefaults {
   readonly ci?: boolean;
   readonly collapse?: boolean;
   readonly concurrency?: ConcurrencySetting;
+  /** Continue independent tasks after command failures; defaults to true. */
   readonly keepGoing?: boolean;
   readonly maxTasks?: number;
   readonly noCache?: boolean;

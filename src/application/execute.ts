@@ -23,6 +23,7 @@ export interface ExecutionOptions {
   readonly concurrency: number;
   readonly concurrencyController?: ConcurrencyController;
   readonly forceRunTasks?: readonly TaskId[];
+  /** Continue independent tasks after command failures; defaults to true. */
   readonly keepGoing?: boolean;
   readonly onEvent?: (event: TaskEvent) => void;
   readonly priorityTasks?: readonly TaskId[];
@@ -140,7 +141,8 @@ export async function executeGraph(
         const interrupted = controller.signal.aborted;
         const cancelled = failure instanceof TaskCancelledError;
         if (!cancelled) errors.push(failure);
-        const abortSiblings = !options.keepGoing || interrupted || cancelled;
+        const abortSiblings =
+          options.keepGoing === false || interrupted || cancelled;
         if (abortSiblings) {
           cancellation ??= {
             kind: cancelled ? "executor" : "task-failed",

@@ -71,6 +71,12 @@ over its configured default; otherwise built-in defaults apply. The `CI`
 environment variable still enables CI behavior, and an explicitly configured
 concurrency can override its sequential concurrency default.
 
+Independent selected tasks continue after a command fails by default. Tasks
+that depend on a failed task are blocked. Set `"keepGoing": false` under
+`defaults` or pass `--no-keep-going` to stop admitting tasks and cancel active
+work after the first failure. `--keep-going` explicitly enables the default
+behavior.
+
 Concurrency accepts a positive integer for a fixed limit or `"auto"` for
 resource-aware scheduling. Local runs use `auto` when no concurrency is set;
 CI runs default to one command unless `auto` or a number is explicitly set.
@@ -93,6 +99,7 @@ npm run check -- --collapse false --max-tasks 150
 npm run check -- --no-scroll --collapse false --max-tasks 1000
 npm run check -- --no-cache
 npm run check -- --keep-going
+npm run check -- --no-keep-going
 ```
 
 Package keys are relative paths using `/`, or `.` for the root. Each package
@@ -226,11 +233,12 @@ errors; they never set process exit status or install global signal handlers.
   limit; `"auto"` selects adaptive scheduling. Non-empty `CI`, `defaults.ci`,
   or `--ci` defaults to one command and streams output. An explicit CLI or
   config concurrency setting takes precedence, including `auto` in CI.
-- By default, a command failure stops admission, blocks dependents, cancels
-  active processes, and waits for cleanup. Set `defaults.keepGoing: true`, use
-  `--keep-going`, or call `runTasks` with `keepGoing: true` to continue
-  independent work; dependents of failed tasks remain blocked. Use
-  `--no-keep-going` to restore fail-fast behavior when the config enables it.
+- By default, independent selected tasks continue after a command failure;
+  dependents of failed tasks remain blocked, and active independent processes
+  finish normally. Set `defaults.keepGoing: false`, pass `--no-keep-going`, or
+  call `runTasks` with `keepGoing: false` to stop admission and cancel active
+  processes after a failure. `--keep-going` and `keepGoing: true` explicitly
+  select the default behavior.
   Windows cancellation terminates the owned tree; POSIX cancellation escalates
   from SIGTERM to SIGKILL.
 - Interactive terminals show nested groups with animated running tasks,
