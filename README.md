@@ -69,13 +69,15 @@ option is omitted. It accepts `ci`, `concurrency`, `collapse`, `keepGoing`,
 `maxTasks`, `noCache`, and `scroll`. An explicit CLI option takes precedence
 over its configured default; otherwise built-in defaults apply. The `CI`
 environment variable still enables CI behavior, and an explicitly configured
-concurrency can override its sequential concurrency default.
+concurrency can override its sequential concurrency default. CI bypasses
+cached results, streams child output directly, suppresses runner progress and
+summaries, and defaults to fail-fast execution.
 
-Independent selected tasks continue after a command fails by default. Tasks
-that depend on a failed task are blocked. Set `"keepGoing": false` under
-`defaults` or pass `--no-keep-going` to stop admitting tasks and cancel active
-work after the first failure. `--keep-going` explicitly enables the default
-behavior.
+Outside CI, independent selected tasks continue after a command fails by
+default. Tasks that depend on a failed task are blocked. In CI, the runner
+stops admitting tasks and cancels active work after the first failure unless
+`--keep-going` is passed. Outside CI, set `"keepGoing": false` under
+`defaults` or pass `--no-keep-going` for fail-fast behavior.
 
 Concurrency accepts a positive integer for a fixed limit or `"auto"` for
 resource-aware scheduling. Local runs use `auto` when no concurrency is set;
@@ -231,14 +233,16 @@ errors; they never set process exit status or install global signal handlers.
   CPUs, rounded down, with a minimum of one.
 - `defaults.concurrency` or `--concurrency N` sets a fixed positive integer
   limit; `"auto"` selects adaptive scheduling. Non-empty `CI`, `defaults.ci`,
-  or `--ci` defaults to one command and streams output. An explicit CLI or
+  or `--ci` defaults to one command, streams child output, bypasses cached
+  results, and suppresses runner progress and summaries. An explicit CLI or
   config concurrency setting takes precedence, including `auto` in CI.
-- By default, independent selected tasks continue after a command failure;
-  dependents of failed tasks remain blocked, and active independent processes
-  finish normally. Set `defaults.keepGoing: false`, pass `--no-keep-going`, or
-  call `runTasks` with `keepGoing: false` to stop admission and cancel active
-  processes after a failure. `--keep-going` and `keepGoing: true` explicitly
-  select the default behavior.
+- Outside CI, independent selected tasks continue after a command failure by
+  default; dependents of failed tasks remain blocked, and active independent
+  processes finish normally. CI defaults to stopping admission and cancelling
+  active processes after the first failure. `--keep-going` or
+  `runTasks("check", { keepGoing: true })` opts into continuing in CI; outside CI,
+  `defaults.keepGoing: false`, `--no-keep-going`, or
+  `runTasks("check", { keepGoing: false })` selects fail-fast behavior.
   Windows cancellation terminates the owned tree; POSIX cancellation escalates
   from SIGTERM to SIGKILL.
 - Interactive terminals show nested groups with animated running tasks,
@@ -266,9 +270,10 @@ errors; they never set process exit status or install global signal handlers.
   the final listing is preserved in scrollback up to the configured cap.
   `--collapse false` retains completed children in the final listing after
   success, failure, or cancellation, regardless of terminal height.
-- CI, redirected output, and `TERM=dumb` use concise non-animated progress.
-  Full transitions remain in JSONL. Animation stops before final diagnostics.
-  Rendering uses `log-update`, not Listr2 or a second task scheduler.
+- CI streams command stdout and stderr directly and emits no runner progress or
+  final task summary. Full transitions remain in JSONL. Redirected output and
+  `TERM=dumb` use concise non-animated progress. Animation stops before final
+  diagnostics. Rendering uses `log-update`, not Listr2 or a second scheduler.
 - Scrolling is enabled by default. `defaults.scroll`, `--no-scroll`, or
   `--scroll` sets the alternate-screen live view, with explicit CLI values
   taking precedence. Use Up/Down, Page Up/Down, Home/End, or the mouse wheel
@@ -288,15 +293,16 @@ errors; they never set process exit status or install global signal handlers.
   On completion or failure the normal screen/input modes are restored and the
   final tree is printed into scrollback, with a blank line above and below it.
   Terminal scrollbars/Shift+wheel are not
-  the live viewport controls. Scrolling activates only with TTY stdin; CI,
-  redirected output, and dumb terminals retain plain output.
+  the live viewport controls. Scrolling activates only with TTY stdin; CI
+  bypasses the viewport, while redirected output and dumb terminals retain
+  plain progress output.
 - Logs use `logs/task-runner/<pid>/<workspace-task>-<timestamp>.log`, with
   filename-safe names and timestamps. Successful/cancelled output logs are
   removed after cleanup. Failed commands print a readable task name and relative
   log path without runner stacks; cancellation adds no error diagnostic.
   Unexpected runner/cleanup failures still surface normally.
-  After success, failure, or cancellation, a persistent task-status summary
-  follows any failure/log messages, including in plain/CI output. It uses the
+  Outside CI, after success, failure, or cancellation, a persistent task-status
+  summary follows any failure/log messages. It uses the
   same command-only counts as the live footer and ends with the completion
   timestamp in ISO 8601 UTC format (`| Finished at: <timestamp>`).
   Structured events remain in separate `events-<run-id>.jsonl` files per invocation.

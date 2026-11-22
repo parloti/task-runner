@@ -27,9 +27,9 @@
 - The scheduler uses a concurrency-controller port to wake when an adaptive
   command limit changes. Infrastructure samples host CPU/memory and Linux
   cgroup v1/v2 limits; fixed numeric limits do not start the adaptive sampler.
-- Independent selected work remains eligible after failure by default;
-  `keepGoing: false` stops admission and cancels active work. Dependents of
-  failed tasks are blocked in either mode.
+- Independent selected work remains eligible after failure by default outside
+  CI. CI defaults to fail-fast; `keepGoing: false` also stops admission and
+  cancels active work. Dependents of failed tasks are blocked in either mode.
 - The validated plan can include prior failed command targets alongside the
   requested entrypoint. The scheduler gives those targets and their selected
   prerequisites queue priority without creating a second execution path.
@@ -42,8 +42,9 @@
 - Infrastructure hashes explicit input/output files and named environment
   values; no manifest interpretation or dependency discovery is involved.
   `.cache/task-runner` contains atomic successful-result records independently
-  of transient logs. Bootstrap injects this adapter, and `noCache` bypasses reads
-  while refreshing successful results. No artifact archive or remote cache exists.
+  of transient logs. Bootstrap injects this adapter, and `noCache` or CI mode
+  bypasses reads while refreshing successful results. No artifact archive or
+  remote cache exists.
 - Infrastructure stores failed task IDs from the latest completed run in a
   config-scoped record under `.cache/task-runner`; locked, timestamp-ordered
   updates keep overlapping runs from replacing newer results. Bootstrap adds
@@ -67,7 +68,8 @@
   paths and falls back to the full path on collisions. Bootstrap supplies those
   paths to the process adapter and CLI progress display; event identities and
   log paths retain full package paths.
-- CLI progress and library subscribers receive the same scheduler events.
+- Outside CI, CLI progress and library subscribers receive the same scheduler
+  events. CI omits the CLI progress subscriber.
 - `onPlan` delivers the selected validated graph before execution; `onEvent`
   delivers state transitions. The presentation-only view deduplicates shared
   tasks and groups prerequisites without interpreting shell commands. Prior
@@ -83,7 +85,8 @@
   Presentation owns the animation timer, not task promises or cancellation.
   Live redraw is viewport-limited; final persistence uses the configured task
   cap without terminal-height clipping.
-  Plain output is used for CI, non-TTY, and dumb terminals.
+  CI omits runner progress output and streams child output directly; non-TTY
+  and dumb terminals use plain event output.
 - Opt-in `ScrollView` owns alternate-screen drawing, wrapped viewport lines,
   keyboard/SGR mouse input, and terminal restoration. Bootstrap wires raw-mode
   Ctrl+C to the existing cancellation handler; scheduling stays unchanged.

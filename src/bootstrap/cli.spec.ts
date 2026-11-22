@@ -198,6 +198,7 @@ describe("executable CLI", () => {
     "selects live=$live with TTY=$tty, CI=$ci, TERM=$term and args=$args",
     async ({ args, ci, live, term, tty }) => {
       // Arrange
+      const ciMode = Boolean(ci) || args.includes("--ci");
       const directory = mkdtempSync(path.join(os.tmpdir(), "runner-display-"));
       writeFileSync(path.join(directory, "package.json"), "{}");
       const config = path.join(directory, "task-runner.json");
@@ -239,12 +240,13 @@ describe("executable CLI", () => {
         await import("./cli.js");
         // Assert
         expect(process.exitCode).toBe(0);
-        expect(
-          output.mock.calls.map(([text]) => String(text)).join(""),
-        ).toContain("check");
+        const renderedOutput = output.mock.calls
+          .map(([text]) => String(text))
+          .join("");
+        expect(renderedOutput).toMatch(ciMode ? /^$/ : /check/);
         expect(timer).toHaveBeenCalledTimes(live ? 1 : 0);
-        expect(cleanup).toHaveBeenCalledWith(
-          live ? timer.mock.results.at(0)?.value : undefined,
+        expect(cleanup.mock.calls).toEqual(
+          ciMode ? [] : [[live ? timer.mock.results.at(0)?.value : undefined]],
         );
         expect(
           output.mock.calls.some(([text]) => String(text).includes("\u{1B}[")),

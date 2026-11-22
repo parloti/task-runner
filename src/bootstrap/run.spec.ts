@@ -122,7 +122,7 @@ describe("runtime concurrency policy", () => {
       {
         defaults: { ci: true, keepGoing: true },
         expected: 1,
-        expectedKeepGoing: true,
+        expectedKeepGoing: false,
         options: {},
       },
       {

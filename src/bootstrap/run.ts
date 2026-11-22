@@ -110,14 +110,16 @@ export async function runTasks(
       {
         cache: createTaskCache(
           root,
-          options.noCache ?? config.defaults?.noCache,
+          ci || (options.noCache ?? config.defaults?.noCache),
         ),
         concurrency,
         ...(autoConcurrency !== undefined && {
           concurrencyController: autoConcurrency,
         }),
         forceRunTasks: priorityTasks,
-        keepGoing: options.keepGoing ?? config.defaults?.keepGoing ?? true,
+        keepGoing:
+          options.keepGoing ??
+          (ci ? false : (config.defaults?.keepGoing ?? true)),
         onEvent,
         priorityTasks,
         ...(options.signal !== undefined && { signal: options.signal }),

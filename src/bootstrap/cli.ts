@@ -41,45 +41,48 @@ try {
         ? input.options.scroll
         : (config.defaults?.scroll ?? true),
     };
-    const progress = new TerminalProgress(
-      process.stderr,
-      process.stderr.isTTY &&
-        !process.env["CI"] &&
-        settings.ci !== true &&
-        process.env["TERM"] !== "dumb",
-      settings.collapse,
-      settings.maxTasks,
-      settings.scroll && process.stdin.isTTY
-        ? {
-            command: formatInvocation(process.argv.slice(2), process.env),
-            input: process.stdin,
-            onInterrupt: interrupt,
-          }
-        : undefined,
-    );
+    const ci = Boolean(process.env["CI"]) || settings.ci === true;
+    const progress = ci
+      ? undefined
+      : new TerminalProgress(
+          process.stderr,
+          process.stderr.isTTY && process.env["TERM"] !== "dumb",
+          settings.collapse,
+          settings.maxTasks,
+          settings.scroll && process.stdin.isTTY
+            ? {
+                command: formatInvocation(process.argv.slice(2), process.env),
+                input: process.stdin,
+                onInterrupt: interrupt,
+              }
+            : undefined,
+        );
     let result;
     let finishedAt: string;
     try {
       result = await runTasks(input.entrypoint, {
         ...input.options,
-        onEvent: (event) => {
-          progress.update(event);
-        },
-        onPlan: (graph, target, packagePaths) => {
-          progress.start(graph, target, packagePaths);
-        },
+        ...(progress !== undefined && {
+          onEvent: (event) => {
+            progress.update(event);
+          },
+          onPlan: (graph, target, packagePaths) => {
+            progress.start(graph, target, packagePaths);
+          },
+        }),
         signal: controller.signal,
       });
       finishedAt = new Date().toISOString();
     } finally {
-      progress.stop();
+      progress?.stop();
     }
     process.exitCode = cliExitCode(result.success, controller.signal.reason);
     for (const error of result.errors)
       console.error(
         error instanceof CommandFailedError ? error.message : error,
       );
-    console.error(`${progress.summary()} | Finished at: ${finishedAt}\n`);
+    if (progress !== undefined)
+      console.error(`${progress.summary()} | Finished at: ${finishedAt}\n`);
   }
 } catch (error) {
   console.error(error);

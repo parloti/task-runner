@@ -102,7 +102,7 @@
   "devDependencies": {
     "@codeperfect/commitlint-config-emoji": "^1.1.0",
     "@codeperfect/eslint-config": "^2.9.0",
-    "@codeperfect/eslint-plugin": "^3.8.0",
+    "@codeperfect/eslint-plugin": "^3.9.0",
     "@commitlint/cz-commitlint": "^21.2.4",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
     "@eslint/js": "^10.0.1",

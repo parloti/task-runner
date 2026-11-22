@@ -17,9 +17,11 @@
 - The optional root `defaults` object can set `ci`, `concurrency`, `collapse`,
   `keepGoing`, `maxTasks`, `noCache`, and `scroll`. Explicit CLI values take precedence over
   configured defaults; omitted values use built-in defaults. A non-empty `CI`
-  environment variable continues to enable CI behavior. Configured or CLI
-  concurrency can override CI's sequential concurrency default. Concurrency
-  accepts a positive integer or `"auto"`.
+  environment variable continues to enable CI behavior. CI bypasses cache
+  reads and defaults to fail-fast execution; an explicit keep-going run option
+  can override fail-fast. Configured or CLI concurrency can override CI's
+  sequential concurrency default. Concurrency accepts a positive integer or
+  `"auto"`.
 - Tasks live in `packages[path][name]`, without task-level package fields
   or entrypoint mappings. Any local task is directly invocable. Bare dependency
   names resolve locally; `<package-path>#<task>` selects another package and
@@ -61,15 +63,16 @@
 - Auto mode uses Linux cgroup v1/v2 CPU quota and CPU-set limits and available
   memory when detected; otherwise it uses host metrics. If resource sampling is
   unavailable at startup, it falls back to the previous half-CPU default.
-- By default, independent selected tasks continue after a command fails.
-  Dependents of failed tasks become blocked. Active independent tasks are not
-  cancelled, and their subprocess/stream cleanup is awaited. Failure context is
-  preserved.
-- `defaults.keepGoing`, `--keep-going`, and library option `keepGoing: true`
-  enable continuing independent tasks; this is the default. Set
-  `defaults.keepGoing: false`, pass `--no-keep-going`, or use library option
+- Outside CI, independent selected tasks continue after a command fails by
+  default. CI defaults to fail-fast. Dependents of failed tasks become blocked;
+  active independent tasks are cancelled in fail-fast mode, and their
+  subprocess/stream cleanup is awaited. Failure context is preserved.
+- `--keep-going` and library option `keepGoing: true` opt into continuing
+  independent tasks in CI. Outside CI, `defaults.keepGoing`, `--keep-going`,
+  and library option `keepGoing: true` enable continuing; this is the default.
+  Set `defaults.keepGoing: false`, pass `--no-keep-going`, or use library option
   `keepGoing: false` to stop admission and cancel active work after a failure.
-  Explicit CLI/library values take precedence over the configured default.
+  Explicit CLI/library values take precedence over defaults.
 - Command tasks whose final state is `failed` are saved as candidates for the
   next runner invocation. The record is scoped to the selected config file.
   Still-configured candidates are added to that invocation's selected graph and
@@ -111,9 +114,9 @@
   independently of invocation logs and cache fingerprints, scoped to the
   selected config file. Overlapping runs preserve completion order. Runs with no
   failed tasks replace this list with an empty list.
-- `defaults.noCache: true`, `--no-cache`, or library option `noCache: true`
-  bypasses all cache reads and executes the complete selected plan. Successful
-  execution refreshes entries.
+- CI mode, `defaults.noCache: true`, `--no-cache`, or library option
+  `noCache: true` bypasses all cache reads and executes the complete selected
+  plan. Successful execution refreshes entries.
   This does not select tasks outside that plan and cannot affect direct npm calls.
 - Progress and JSONL events distinguish `cached` from newly `succeeded` tasks,
   retain the reused success timestamp, and explain cache misses. Artifacts are
@@ -233,14 +236,19 @@
   no started work report zero. Collapse and viewport limits do not affect this.
 - Live status icons use color and a dot spinner; labels and state words remain
   readable without color. `NO_COLOR` or `FORCE_COLOR=0` disables status colors.
-- CI, redirected output, and dumb terminals use non-animated progress without
+- CI mode, enabled by a non-empty `CI`, `--ci`, or `defaults.ci`, streams
+  command stdout and stderr directly to the invoking console, bypasses cached
+  results, and emits no runner task progress or final task summary. Failure
+  diagnostics remain visible. Full state transitions remain in the JSONL event
+  log.
+- Redirected output and dumb terminals use non-animated progress without
   ready-state noise. Full state transitions remain in the JSONL event log.
 - Terminal animation stops before CLI diagnostics and on every completion path.
-- After a run returns, the CLI prints a persistent command-only task-status
-  summary after any failure/log diagnostics, on success, failure, or cancellation.
+- Outside CI mode, after a run returns the CLI prints a persistent command-only
+  task-status summary after any failure/log diagnostics, on success, failure, or cancellation.
   It uses the live footer's counts, excludes groups and zero-count statuses,
   includes the runner completion timestamp in ISO 8601 UTC format, and is also
-  present in plain/CI output. Preflight or runner exceptions do not print a
+  present in plain output. Preflight or runner exceptions do not print a
   completed-run summary.
 - External telemetry can subscribe through the event contract; a backend is not
   required to execute local commands.

@@ -188,15 +188,7 @@ describe("packed distribution", () => {
           ),
         ),
       ).toBe(true);
-      expect(cli.stderr).toContain("leaf (");
-      expect(cli.stderr).toMatch(/build \(⧗ \d+\.\ds, ∑ \d+\.\ds\)/);
-      expect(cli.stderr).toContain("docs");
-      expect(cli.stderr).toMatch(/check \(⧗ \d+\.\ds, ∑ \d+\.\ds\)/);
-      expect(cli.stderr).not.toContain('[".","');
-      expect(cli.stderr).not.toContain("\u{1B}[");
-      expect(cli.stderr).toMatch(
-        /Tasks: 2 \| succeeded: 2 \| Finished at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\r?\n\r?\n$/,
-      );
+      expect(cli.stderr).toBe("");
       expect(library.stdout).toContain('"success":true');
       expect(library.stdout).toContain('"version":2');
       expect(library.stdout).toContain('"build":"leaf"');
