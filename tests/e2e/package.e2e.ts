@@ -23,15 +23,25 @@ if (npm === undefined) throw new Error("The e2e suite must run through npm");
 
 // npm run prepends every ancestor node_modules/.bin, including this repository's
 // development shim; consumers must resolve only their installed executable.
-const isolatedEnvironment = (): NodeJS.ProcessEnv => {
+const isolatedEnvironment = (userConfig: string): NodeJS.ProcessEnv => {
   const entries = Object.entries(process.env).filter(
-    ([name]) => name.toUpperCase() !== "PATH",
+    ([name]) =>
+      name.toUpperCase() !== "PATH" &&
+      ![
+        "NPM_CONFIG_ALWAYS_AUTH",
+        "NPM_CONFIG_GLOBAL_IGNORE_FILE",
+        "NPM_CONFIG_USERCONFIG",
+      ].includes(name.toUpperCase()),
   );
   const searchPath = (process.env["PATH"] ?? process.env["Path"] ?? "")
     .split(path.delimiter)
     .filter((entry) => !/[\\/]node_modules[\\/]\.bin[\\/]?$/i.test(entry))
     .join(path.delimiter);
-  return { ...Object.fromEntries(entries), PATH: searchPath };
+  return {
+    ...Object.fromEntries(entries),
+    NPM_CONFIG_USERCONFIG: userConfig,
+    PATH: searchPath,
+  };
 };
 
 describe("packed distribution", () => {
@@ -41,9 +51,12 @@ describe("packed distribution", () => {
     const artifacts = path.join(directory, "artifacts");
     const consumer = path.join(directory, "consumer");
     const packageRoot = path.join(directory, "package");
+    const userConfig = path.join(directory, "npmrc");
+    const env = isolatedEnvironment(userConfig);
     mkdirSync(artifacts);
     mkdirSync(consumer);
     mkdirSync(packageRoot);
+    writeFileSync(userConfig, "");
     for (const file of [
       "LICENSE",
       "README.md",
@@ -96,7 +109,7 @@ describe("packed distribution", () => {
       const result = spawnSync(process.execPath, args, {
         cwd,
         encoding: "utf8",
-        env: isolatedEnvironment(),
+        env,
         timeout: 120_000,
         windowsHide: true,
       });

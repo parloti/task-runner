@@ -31,6 +31,7 @@ describe("executable cache bypass", () => {
       const loader = import.meta.resolve("jiti/register");
       const entry = path.resolve("src", "bootstrap", "cli.ts");
       const messages: string[] = [];
+      const env = { ...process.env, CI: "" };
       // Act
       for (const args of [[], [], ["--no-cache"]]) {
         const result = spawnSync(
@@ -46,7 +47,7 @@ describe("executable cache bypass", () => {
             ".",
             ...args,
           ],
-          { cwd: directory, encoding: "utf8", timeout: 60_000 },
+          { cwd: directory, encoding: "utf8", env, timeout: 60_000 },
         );
         if (result.status !== 0)
           throw new Error(
