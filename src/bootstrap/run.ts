@@ -44,15 +44,14 @@ export async function runTasks(
     throw new Error(`Unknown task "${entrypoint}" in package ${packagePath}`);
   const target = taskReference(packagePath, entrypoint);
   const failureStore = createFailedTaskStore(root, configPath);
-  const configuredCommands = new Set<string>();
-  for (const [configuredPackage, definitions] of Object.entries(
-    config.packages,
-  ))
-    for (const [name, definition] of Object.entries(definitions))
-      if (definition.run !== undefined)
-        configuredCommands.add(taskReference(configuredPackage, name));
   const savedFailures = await failureStore.read();
-  const retryTargets = savedFailures.filter((id) => configuredCommands.has(id));
+  const requestedGraph = compileGraph(config, target);
+  const requestedCommands = new Set<string>(
+    [...requestedGraph]
+      .filter(([, task]) => task.run !== undefined)
+      .map(([id]) => id),
+  );
+  const retryTargets = savedFailures.filter((id) => requestedCommands.has(id));
   const graph = compileGraph(config, target, retryTargets);
   const priorityTasks = retryTargets.map((id) => resolveTaskReference(".", id));
   const packagePaths = Object.keys(config.packages);

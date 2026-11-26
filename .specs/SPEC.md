@@ -75,12 +75,13 @@
   Explicit CLI/library values take precedence over defaults.
 - Command tasks whose final state is `failed` are saved as candidates for the
   next runner invocation. The record is scoped to the selected config file.
-  Still-configured candidates are added to that invocation's selected graph and
-  receive scheduler priority alongside its requested entrypoint. Canceled,
-  blocked, and removed tasks are not retried. Cached groups containing a
-  candidate are bypassed so it executes. Each completed run replaces the saved
-  candidates, so a run with no failed tasks clears them. Overlapping runs retain
-  the candidates from the latest completed run.
+  Still-configured candidates already present in the requested graph receive
+  scheduler priority. Candidates outside that graph are not added, so an
+  invocation runs only its requested task plan. Canceled, blocked, and removed
+  tasks are not retried. Cached groups containing a candidate are bypassed so it
+  executes. Each completed run replaces the saved candidates, so a run with no
+  failed tasks clears them. Overlapping runs retain the candidates from the
+  latest completed run.
 - Library callers receive task states and errors without process-global changes.
   CLI exit codes are 0 for success, 1 for failure, 130 for interrupt, and 143
   for termination.
@@ -177,9 +178,7 @@
   Groups contain their prerequisites; command prerequisites appear in execution
   order within the containing group. Shared workspace tasks appear once under
   their matching reachable validation group, otherwise under their first
-  containing group. Remembered failed tasks outside the requested target appear
-  as top-level rows alongside the requested tree. Empty cross-package aggregate
-  wrappers are omitted.
+  containing group. Empty cross-package aggregate wrappers are omitted.
   Display ownership never controls execution.
 - Every group establishes package context for its subtasks; matching
   `validate:<workspace>` groups establish the named workspace context.

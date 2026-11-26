@@ -30,9 +30,10 @@
 - Independent selected work remains eligible after failure by default outside
   CI. CI defaults to fail-fast; `keepGoing: false` also stops admission and
   cancels active work. Dependents of failed tasks are blocked in either mode.
-- The validated plan can include prior failed command targets alongside the
-  requested entrypoint. The scheduler gives those targets and their selected
-  prerequisites queue priority without creating a second execution path.
+- Prior failed command targets receive retry priority only when they are
+  already in the requested graph. The scheduler prioritizes those selected
+  targets and their selected prerequisites without creating a second execution
+  path.
 - Caller-declared `CacheDefinition` values survive config parsing, preset
   construction, and graph compilation. Application cache planning checks outer
   groups first and marks selected members reusable without changing task
@@ -47,9 +48,10 @@
   remote cache exists.
 - Infrastructure stores failed task IDs from the latest completed run in a
   config-scoped record under `.cache/task-runner`; locked, timestamp-ordered
-  updates keep overlapping runs from replacing newer results. Bootstrap adds
-  still-configured command IDs to the next plan, and application scheduling
-  prioritizes them with their selected prerequisites.
+  updates keep overlapping runs from replacing newer results. Bootstrap
+  considers only still-configured command IDs already in the requested graph;
+  it does not add out-of-plan tasks. Application scheduling prioritizes those
+  selected retries with their selected prerequisites.
   Globby performs dot-inclusive discovery behind the fingerprint adapter.
 - Process adapters implement npm/shell execution, tree termination, and streams.
 - The executor's optional diagnostics callback supplies observed process
@@ -73,8 +75,8 @@
 - `onPlan` delivers the selected validated graph before execution; `onEvent`
   delivers state transitions. The presentation-only view deduplicates shared
   tasks and groups prerequisites without interpreting shell commands. Prior
-  failed tasks outside the requested target appear as top-level rows in that
-  same plan.
+  failed tasks receive priority only when they are already in the requested
+  graph; they do not add work outside the selected task plan.
 - Presentation tracks group wall-clock durations from the first activity in
   their owned display subtree, sums command durations for group real time, and
   freezes both values at terminal events. A started group presents `running`

@@ -131,7 +131,7 @@ export class ProgressModel {
       }
     };
     visit(root, 0, [], ".");
-    // Previous-run retries can be selected outside the requested target.
+    // Additional selected tasks may be outside the requested target.
     for (const task of graph.values())
       if (!reachable.has(task.id)) visit(task, 0, [], ".");
     for (const row of this.rows) {

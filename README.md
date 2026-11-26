@@ -172,12 +172,13 @@ execution.
 
 The runner saves task IDs that ended with `failed` in the latest completed run.
 The record is scoped to the selected config file. On the next runner invocation,
-still-configured command tasks from that list are added to the requested plan
-with scheduler priority. Canceled, blocked, and removed tasks are skipped.
-Cached groups containing a candidate are bypassed so it executes. Every
-completed run replaces the list, so a run with no failed tasks clears it. When
-invocations overlap, the latest completed run's list wins. This state is stored
-in `.cache/task-runner` beside the successful-result cache.
+still-configured failed command tasks that are already in the requested plan
+receive scheduler priority. Failures outside that plan are left out, so running
+one target never starts unrelated tasks. Canceled, blocked, and removed tasks
+are skipped. Cached groups containing a candidate are bypassed so it executes.
+Every completed run replaces the list, so a run with no failed tasks clears it.
+When invocations overlap, the latest completed run's list wins. This state is
+stored in `.cache/task-runner` beside the successful-result cache.
 
 ## Library and presets
 
