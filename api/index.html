@@ -50,13 +50,26 @@ option is omitted. It accepts <code>ci</code>, <code>concurrency</code>, <code>c
 <code>maxTasks</code>, <code>noCache</code>, and <code>scroll</code>. An explicit CLI option takes precedence
 over its configured default; otherwise built-in defaults apply. The <code>CI</code>
 environment variable still enables CI behavior, and an explicitly configured
-concurrency can override its sequential concurrency default.</p>
+concurrency can override its sequential concurrency default. CI bypasses
+cached results, streams child output directly, suppresses runner progress and
+summaries, and defaults to fail-fast execution.</p>
+<p>Outside CI, independent selected tasks continue after a command fails by
+default. Tasks that depend on a failed task are blocked. In CI, the runner
+stops admitting tasks and cancels active work after the first failure unless
+<code>--keep-going</code> is passed. Outside CI, set <code>&quot;keepGoing&quot;: false</code> under
+<code>defaults</code> or pass <code>--no-keep-going</code> for fail-fast behavior.</p>
+<p>Concurrency accepts a positive integer for a fixed limit or <code>&quot;auto&quot;</code> for
+resource-aware scheduling. Local runs use <code>auto</code> when no concurrency is set;
+CI runs default to one command unless <code>auto</code> or a number is explicitly set.
+For example, use <code>&quot;concurrency&quot;: &quot;auto&quot;</code> in <code>defaults</code> or run
+<code>task-runner run check --concurrency auto</code> to enable adaptive scheduling in CI.
+Library callers can use <code>runTasks(&quot;check&quot;, { concurrency: &quot;auto&quot; })</code>.</p>
 <p>Keep <code>compile</code> and <code>test</code> as ordinary npm scripts; add
 <code>&quot;check&quot;: &quot;task-runner run check&quot;</code> to <code>package.json</code>. Task references are explicit,
 not inferred from shell text. Use <code>{ &quot;kind&quot;: &quot;shell&quot;, &quot;command&quot;: &quot;...&quot; }</code> for an
 intentional platform-specific shell command. npm tasks accept an <code>args</code> array,
 forwarded after <code>npm run &lt;script&gt; --</code>, and preserve npm lifecycle hooks.</p>
-<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span><br/><span class="hl-1">npm run check -- --no-cache</span><br/><span class="hl-1">npm run check -- --keep-going</span>
+<pre><code class="powershell"><span class="hl-1">npm run check</span><br/><span class="hl-1">npm run check -- --ci</span><br/><span class="hl-1">npm run check -- --concurrency </span><span class="hl-5">3</span><br/><span class="hl-1">npm run check -- --collapse false</span><br/><span class="hl-1">npm run check -- --collapse false --max-tasks </span><span class="hl-5">150</span><br/><span class="hl-1">npm run check -- --no-scroll --collapse false --max-tasks </span><span class="hl-5">1000</span><br/><span class="hl-1">npm run check -- --no-cache</span><br/><span class="hl-1">npm run check -- --keep-going</span><br/><span class="hl-1">npm run check -- --no-keep-going</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Package keys are relative paths using <code>/</code>, or <code>.</code> for the root. Each package
@@ -107,12 +120,13 @@ execution.</p>
 <h3 id="previous-run-failed-tasks" class="tsd-anchor-link">Previous-run failed tasks<a href="#previous-run-failed-tasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>The runner saves task IDs that ended with <code>failed</code> in the latest completed run.
 The record is scoped to the selected config file. On the next runner invocation,
-still-configured command tasks from that list are added to the requested plan
-with scheduler priority. Canceled, blocked, and removed tasks are skipped.
-Cached groups containing a candidate are bypassed so it executes. Every
-completed run replaces the list, so a run with no failed tasks clears it. When
-invocations overlap, the latest completed run's list wins. This state is stored
-in <code>.cache/task-runner</code> beside the successful-result cache.</p>
+still-configured failed command tasks that are already in the requested plan
+receive scheduler priority. Failures outside that plan are left out, so running
+one target never starts unrelated tasks. Canceled, blocked, and removed tasks
+are skipped. Cached groups containing a candidate are bypassed so it executes.
+Every completed run replaces the list, so a run with no failed tasks clears it.
+When invocations overlap, the latest completed run's list wins. This state is
+stored in <code>.cache/task-runner</code> beside the successful-result cache.</p>
 <h2 id="library-and-presets" class="tsd-anchor-link">Library and presets<a href="#library-and-presets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <pre><code class="typescript"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">runTasks</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-7">createWorkspacePreset</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@codeperfect/task-runner/presets&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">preset</span><span class="hl-1"> = </span><span class="hl-0">createWorkspacePreset</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-7">packages:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;.&quot;</span><span class="hl-7">:</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">compile:</span><span class="hl-1"> { </span><span class="hl-7">run:</span><span class="hl-1"> { </span><span class="hl-7">kind:</span><span class="hl-1"> </span><span class="hl-2">&quot;npm&quot;</span><span class="hl-1">, </span><span class="hl-7">script:</span><span class="hl-1"> </span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1"> } },</span><br/><span class="hl-1">      </span><span class="hl-7">check:</span><span class="hl-1"> { </span><span class="hl-7">dependsOn:</span><span class="hl-1"> [</span><span class="hl-2">&quot;compile&quot;</span><span class="hl-1">] },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">runTasks</span><span class="hl-1">(</span><span class="hl-2">&quot;check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-7">cwd:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/repository&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">signal:</span><span class="hl-1"> </span><span class="hl-7">abortController</span><span class="hl-1">.</span><span class="hl-7">signal</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">onEvent</span><span class="hl-7">:</span><span class="hl-1"> (</span><span class="hl-7">event</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-7">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">status</span><span class="hl-1">, </span><span class="hl-7">event</span><span class="hl-1">.</span><span class="hl-7">taskId</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><span class="hl-9">// Write preset to task-runner.json; npm scripts remain in package.json.</span>
 </code><button type="button">Copy</button></pre>
@@ -134,16 +148,28 @@ its contents without inspecting scripts. Required npm scripts are attempted
 through npm and fail as task execution if missing; an optional npm script
 adds <code>--if-present</code> and succeeds when absent.</li>
 <li>Execute shared tasks once per invocation, with one global leaf-command limit.</li>
-<li>Default concurrency is half the available CPUs, rounded down, with a minimum
-of one.
-<code>defaults.concurrency</code> or <code>--concurrency N</code> sets a positive integer limit.
-Non-empty <code>CI</code>, <code>defaults.ci</code>, or <code>--ci</code> defaults to sequential commands and
-streams output; configured or CLI concurrency takes precedence.</li>
-<li>By default, a command failure stops admission, blocks dependents, cancels
-active processes, and waits for cleanup. Set <code>defaults.keepGoing: true</code>, use
-<code>--keep-going</code>, or call <code>runTasks</code> with <code>keepGoing: true</code> to continue
-independent work; dependents of failed tasks remain blocked. Use
-<code>--no-keep-going</code> to restore fail-fast behavior when the config enables it.
+<li>Local runs default to adaptive concurrency. The scheduler starts with one
+command slot, samples CPU and memory once per second, and adds one slot after
+two healthy samples (CPU at or below 70% and memory headroom at or above
+25%). CPU above the growth threshold pauses ramp-up. The runner removes one
+slot when memory headroom is 15% or lower. Active commands finish normally
+when the limit decreases. Auto mode is capped by available CPUs, including
+Linux cgroup v1/v2 quota and CPU-set limits where detectable. Memory headroom
+uses cgroup limits when available and host memory otherwise. If startup
+resource sampling is unavailable, the runner falls back to half the available
+CPUs, rounded down, with a minimum of one.</li>
+<li><code>defaults.concurrency</code> or <code>--concurrency N</code> sets a fixed positive integer
+limit; <code>&quot;auto&quot;</code> selects adaptive scheduling. Non-empty <code>CI</code>, <code>defaults.ci</code>,
+or <code>--ci</code> defaults to one command, streams child output, bypasses cached
+results, and suppresses runner progress and summaries. An explicit CLI or
+config concurrency setting takes precedence, including <code>auto</code> in CI.</li>
+<li>Outside CI, independent selected tasks continue after a command failure by
+default; dependents of failed tasks remain blocked, and active independent
+processes finish normally. CI defaults to stopping admission and cancelling
+active processes after the first failure. <code>--keep-going</code> or
+<code>runTasks(&quot;check&quot;, { keepGoing: true })</code> opts into continuing in CI; outside CI,
+<code>defaults.keepGoing: false</code>, <code>--no-keep-going</code>, or
+<code>runTasks(&quot;check&quot;, { keepGoing: false })</code> selects fail-fast behavior.
 Windows cancellation terminates the owned tree; POSIX cancellation escalates
 from SIGTERM to SIGKILL.</li>
 <li>Interactive terminals show nested groups with animated running tasks,
@@ -171,9 +197,10 @@ redraw fits the terminal viewport;
 the final listing is preserved in scrollback up to the configured cap.
 <code>--collapse false</code> retains completed children in the final listing after
 success, failure, or cancellation, regardless of terminal height.</li>
-<li>CI, redirected output, and <code>TERM=dumb</code> use concise non-animated progress.
-Full transitions remain in JSONL. Animation stops before final diagnostics.
-Rendering uses <code>log-update</code>, not Listr2 or a second task scheduler.</li>
+<li>CI streams command stdout and stderr directly and emits no runner progress or
+final task summary. Full transitions remain in JSONL. Redirected output and
+<code>TERM=dumb</code> use concise non-animated progress. Animation stops before final
+diagnostics. Rendering uses <code>log-update</code>, not Listr2 or a second scheduler.</li>
 <li>Scrolling is enabled by default. <code>defaults.scroll</code>, <code>--no-scroll</code>, or
 <code>--scroll</code> sets the alternate-screen live view, with explicit CLI values
 taking precedence. Use Up/Down, Page Up/Down, Home/End, or the mouse wheel
@@ -193,15 +220,16 @@ header, spacing, or counts as needed. Ctrl+C cancels the run normally.
 On completion or failure the normal screen/input modes are restored and the
 final tree is printed into scrollback, with a blank line above and below it.
 Terminal scrollbars/Shift+wheel are not
-the live viewport controls. Scrolling activates only with TTY stdin; CI,
-redirected output, and dumb terminals retain plain output.</li>
+the live viewport controls. Scrolling activates only with TTY stdin; CI
+bypasses the viewport, while redirected output and dumb terminals retain
+plain progress output.</li>
 <li>Logs use <code>logs/task-runner/&lt;pid&gt;/&lt;workspace-task&gt;-&lt;timestamp&gt;.log</code>, with
 filename-safe names and timestamps. Successful/cancelled output logs are
 removed after cleanup. Failed commands print a readable task name and relative
 log path without runner stacks; cancellation adds no error diagnostic.
 Unexpected runner/cleanup failures still surface normally.
-After success, failure, or cancellation, a persistent task-status summary
-follows any failure/log messages, including in plain/CI output. It uses the
+Outside CI, after success, failure, or cancellation, a persistent task-status
+summary follows any failure/log messages. It uses the
 same command-only counts as the live footer and ends with the completion
 timestamp in ISO 8601 UTC format (<code>| Finished at: &lt;timestamp&gt;</code>).
 Structured events remain in separate <code>events-&lt;run-id&gt;.jsonl</code> files per invocation.
