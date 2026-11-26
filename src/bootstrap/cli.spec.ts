@@ -32,6 +32,7 @@ describe("executable CLI", () => {
         version: 2,
       }),
     );
+    vi.stubEnv("CI", "");
     vi.resetModules();
     vi.doMock(import("../infrastructure"), async (importOriginal) => ({
       ...(await importOriginal()),

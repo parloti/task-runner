@@ -103,6 +103,7 @@ describe("executable CLI", () => {
           version: 2,
         }),
       );
+      vi.stubEnv("CI", "");
       vi.resetModules();
       const listeners: Record<string, () => void> = {};
       const register = process.on.bind(process);
